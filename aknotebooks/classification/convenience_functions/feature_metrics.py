@@ -96,10 +96,7 @@ def features_sets_and_metrics(no_states, M, T, states, priors):
         'determ': np.empty((M, T))
     }
 
-
-
-
-empty((M, T, no_model_params))
+    fischer_polar = np.empty((M, T, no_model_params))
     # gamma_polar = np.empty((M, T, no_model_params))
 
     do_svd = lambda A: np.linalg.svd(A, full_matrices=False, compute_uv=False)
@@ -108,7 +105,7 @@ empty((M, T, no_model_params))
 
     do_trace = lambda row: np.sum(row)
 
-    do_determ = lambda row: np.prod(row) by Kabbage
+    do_determ = lambda row: np.prod(row)
 
     for m in range(0, M): #  number of M copies
         # First treat the matrix valued quantities
@@ -150,24 +147,22 @@ def validate_spherical(M):
 
 if __name__ == '__main__':
 
-    state_ratios = np.array([[0.2, 0.05, 0.1], [0.4, 0.1, 0.2], [0.8, 0.2, 0.4]])
+    state_ratios = np.array([[0.4, 0.4, 0.2], [0.3, 0.2, 0.5], [0.35, 0.35, 0.3]])
 
-    inital_length = 10000 # length of sequence
+    initial_length = 9000 # length of sequence
     M = 3 # number of copies
-    no_states = 4
+    no_states = 3
 
-    sigmas = [0.05, 0.002, 0.2, 0.15]  # fast and slow
-    lambdas = [1. / 35., 1 / 20., 1./5, 1./5]
-    weights = [0.1, 0.2, 0.5, 0.4]
-    tpm = np.array([[0.45, 0.15, 0.3, 0.1], \
-                    [0.15, 0.25, 0.3, 0.3], \
-                    [0.1, 0.3, 0.3, 0.3], \
-                    [0.15, 0.15, 0.5, 0.2]])
-    pi = np.array([0.4, 0.25, 0.2, 0.15])
+    sigmas = [0.5, 0.002,0.01]  # fast and slow
+    lambdas = [1. / 3., 1 / 20., 1/10.]
+    weights = [0.1, 0.4, 0.3]
+    tpm = np.array([[0.4, 0.4, 0.2], [0.3, 0.2, 0.5], [0.35, 0.35, 0.3]])
+
+    pi = np.array([0.35, 0.25, 0.40])
 
     # Duration is measured in seconds for now (to be revised). lambda units are seconds^{-1}
     # so here we consider
-    fixed_states = states_from_fixed_ratios(state_ratios, inital_length)
+    fixed_states = states_from_fixed_ratios(state_ratios, initial_length)
 
     # T will be different from initial_length b/c we generate states in chunks to respect ratios.
     T = len(fixed_states)
@@ -178,19 +173,19 @@ if __name__ == '__main__':
     all_features, ksi_metrics, im_metrics, fischer_polar = features_sets_and_metrics(no_states, M, T, fixed_states, priors)
 
     np.save(os.path.join(main_path, 'ksi_metrics_len'\
-                         +str(inital_length)+'states'+\
+                         +str(initial_length)+'states'+\
                          str(no_states)+'.npy'), ksi_metrics)
 
     np.save(os.path.join(main_path, 'im_metrics_len'\
-                         + str(inital_length) + 'states' + \
+                         + str(initial_length) + 'states' + \
                          str(no_states) + '.npy'), im_metrics)
 
     np.save(os.path.join(main_path, 'fischer_polar_len' \
-                         + str(inital_length) + 'states' + \
+                         + str(initial_length) + 'states' + \
                          str(no_states) + '.npy'), fischer_polar)
 
     np.save(os.path.join(main_path, 'fixed_states_len' \
-                         + str(inital_length) + '_states' + \
+                         + str(initial_length) + '_states' + \
                          str(no_states) + '.npy'), fixed_states)
 
 
