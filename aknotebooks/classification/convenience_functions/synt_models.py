@@ -10,11 +10,7 @@ from sklearn.linear_model import RidgeClassifierCV
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.cross_validation import KFold
 #####metrics
-# from sklearn.metrics import f1_score
-# from sklearn.metrics import accuracy_score, confusion_matrix
-# from sklearn.metrics import roc_curve, auc
-# from sklearn.metrics import precision_recall_fscore_support
-# import matplotlib.pyplot as plt
+you
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.svm import SVC
@@ -222,17 +218,17 @@ def remove_last_element(arr):
 ####
 
 ticker = 'SYNT_2states'
-features_path='/home/ak/Documents/Data/features_models/features/'
+features_path='/home/ak/Data/features_models/features/'
 
 ####paths####
-labels_path = '/home/ak/Documents/Data/features_models/labels'
-main_path = '/home/ak/Documents/Data/features_models/'
+labels_path = '/home/ak/Data/features_models/labels/NON_DIRECTIONAL/'
+main_path = '/home/ak/Data/features_models/'
 
-models_path=os.path.join(main_path,'models')
+models_path = os.path.join(main_path,'models')
 hmm_models_path = os.path.join(models_path,'hmm_models')
 features_ticker_path = os.path.join(features_path, ticker)
 predictions_path = os.path.join(main_path, 'predictions')
-# ticker = 'SYNT_4states'
+
 
 features_path = os.path.join(main_path, 'features')
 ticker_labels_path = os.path.join(labels_path, ticker)
@@ -306,6 +302,7 @@ print("saving the model:",seq_model)
 pickle.dump(init_params, open(os.path.join(models_path,seq_model), 'wb'))
 
 models_dates = trained_hmms.keys() #dates of the trained hmm models
+#create labels?
 
 ## clf fitting##
 for date, date_hmm in trained_hmms.iteritems():
