@@ -46,7 +46,7 @@ def fwd_dates(_dates_list, _key_date):
 def remove_nans(features_tuple, labels, idx=1):
     # not the cleanest but useful
     # function to clean up nans as I seem to use it a lot, so better to have one function
-    # combines the features and labels and removes rows with nans across so we dont lost the ordering
+    # combines the features and labels and removes rows with nans across so we dont lose the ordering
     # returns features and labels
     features_df = pd.concat([features_tuple[0], features_tuple[1], features_tuple[2], \
                              features_tuple[3]], axis=1, sort=False)
@@ -298,7 +298,7 @@ trained_hmms = hmm_calibration_engine.hmm_fit_func(ticker, data_dic, trading_hou
 
 ###saving trained model hmms###
 seq_model = "_".join((str(n_hidden_states),'state',"trained","hmm","models", ".pickle"))
-print("saving the model:",seq_model)
+print("saving the model:", seq_model)
 pickle.dump(init_params, open(os.path.join(models_path,seq_model), 'wb'))
 
 models_dates = trained_hmms.keys() #dates of the trained hmm models
