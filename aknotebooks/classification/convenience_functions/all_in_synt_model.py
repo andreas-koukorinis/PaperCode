@@ -182,18 +182,13 @@ class FitModels(object):
         return y_pred
 
 
-
-
 if __name__ == '__main__' :
-
-##    setting locations
+    #  setting locations
     ticker = 'test_SYNT_2states' #testing a new synthetic ticker
 
     data_dir = os.getenv('FINANCE_DATA') #main directory
     features_path = '/home/ak/Data/features_models/features/' #where features are saved
     labels_path = '/home/ak/Data/features_models/labels' #where labels are saved
-
-
 
     ticker_labels_path = os.path.join(labels_path, ticker + '/NON_DIRECTIONAL')
 
@@ -208,8 +203,97 @@ if __name__ == '__main__' :
 
     models_path = os.path.join(main_path, 'models')
     ticker_models_path = os.path.join(models_path, ticker)
-    # hmm_models_path = os.path.join(models_path,'hmm_models')
-    # features_ticker_path = os.path.join(features_path, ticker)
-    # predictions_path = os.path.join(main_path, 'predictions')
+
+    # hmm_models_path = os.path.join(models_path,'hmm_models') #only if we store the hmm models
     if not os.path.exists(ticker_models_path):
         os.makedirs(ticker_models_path)
+
+    #  Parameters -setting up the HMM etc
+    no_states = 2
+    sigmas = [0.05, 0.002]  # fast and slow
+    # Duration is measured in seconds for now (to be revised). lambda units are seconds^{-1}
+    # so here we consider
+
+    lambdas = [1. / 35., 1. / 10.]
+    weights = [0.1, 0.6]
+
+    obs_model = ExpIndMixDiracGauss(no_states)
+    obs_model.set_up_initials(priors={'sigmas': sigmas, 'lambdas': lambdas, 'weights': weights})
+
+    hmm_ = hmm_engine(obs_model, no_states)
+
+    # set up some priors
+    tpm = np.array([[0.4, 0.6], [0.7, 0.3]])
+    pi = np.array([0.4, 0.6])
+    hmm_.set_up_initials(priors={'tpm': tpm, 'pi': pi})
+
+    no_dates = 3  # <-- this is the number of days you want
+    start_date = pd.datetime(2017, 6, 1)
+    dummy_dates = [start_date + BDay(i) for i in range(no_dates)]
+
+    no_points = 5000
+
+    rng = np.random.RandomState(1234)
+    trd_hours_filter = TradingHours.all_trading_day
+
+    # silly hack, add 1 millisecond so that the initial timestamp is printed with milliseconds and does not
+    # break the parsing of Timestamps when loading
+
+    morning_start = dt.time(8, 0, 0, 1)
+
+    initial_price = 100
+
+    for dd in dummy_dates:
+        random_states = hmm_.sample_states(rng=rng, length=no_points)
+        observation_points = obs_model.sample_data(no_points, rng=rng, state=random_states)
+        # The first duration is always zero
+        observation_points[0, 0] = 0.
+
+        file_path = os.path.join(data_dir, ticker)
+        file_name = '.'.join([dd.strftime('%Y%m%d'), 'csv'])
+
+        data_to_save = pd.DataFrame({'states': random_states,
+                                     'Duration': observation_points[:, 0],
+                                     'ReturnTradedPrice': observation_points[:, 1],
+                                     })
+        data_to_save['TradedTime'] = pd.Series()
+
+        # Now calculate the Traded prices and traded times in reverse order as to what would happen
+        # with real data.
+        # data_to_save.loc[0, 'TradedTime'] = dt.datetime.combine(dd.date(), morning_start)
+        data_to_save['TradedTime'] = data_to_save['Duration'].cumsum().apply(lambda dur:
+                                                                             (dt.datetime.combine(dd.date(),
+                                                                                                  morning_start) + \
+                                                                              dt.timedelta(seconds=dur)).time())
+
+        data_to_save['TradedPrice'] = initial_price * (1. + data_to_save['ReturnTradedPrice']).cumprod()
+        data_to_save.to_csv(os.path.join(file_path, file_name), index=False)
+
+    print "ok-produced data"
+
+    init_params = {
+        "obs_model_params": {
+            'obs_model_name': 'ExpIndMixDiracGauss',
+            'em_init_method': InitialisationMethod.cluster
+
+        },
+        "hidden_model_params": {
+            'no_hidden_states': no_states,
+            'pi': pi,
+            'tpm': tpm,
+            'em_init_method': InitialisationMethod.uniform
+        },
+        "update_tag": 'tpsml'
+    }
+
+    data = load_data(ticker, which_trading_hours=TradingHours.all_trading_day) #prob dont need this
+
+    hmm_calibration_engine = hmm_calibration(no_parallel_procs=None,
+                                             init_params=init_params)
+
+    trained_hmms = hmm_calibration_engine.hmm_fit_func(ticker, data, trd_hours_filter,
+                                                       force_recalc=False)
+
+    for date, date_hmm in trained_hmms.iteritems():
+        feature_engine = hmm_features(date_hmm)
+        features = feature_engine.generate_features(data[date])
