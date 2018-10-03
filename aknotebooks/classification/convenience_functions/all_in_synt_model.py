@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import os
-import matplotlib.pyplot as plt
 from pandas.tseries.offsets import BDay
 from hsmm_core.hmm import hmm_engine
 from hsmm_core.observation_models import ExpIndMixDiracGauss
@@ -13,13 +12,14 @@ from hsmm_core.consts import ThresholdMethod, LabellingChoice
 import pickle
 from hsmm_core.consts import InitialisationMethod
 import datetime as dt
-plt.style.use('ggplot')
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier,  GradientBoostingClassifier
 from sklearn.linear_model import RidgeClassifierCV
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
 sc = StandardScaler()
 
 ###-functions-###
@@ -154,7 +154,7 @@ class FitModels(object):
     def gp_clf(self):
         kernel = 1.0 * RBF([1.0])  # isotropic
         gpc_rbf_isotropic = GaussianProcessClassifier(kernel=kernel).fit(self.X_train, self.y_train)
-        # hyperparameters are optimised by default
+        # hyper-parameters are optimised by default
         return gpc_rbf_isotropic
 
     def random_forest_clf(self, no_est=100):
@@ -186,10 +186,7 @@ if __name__ == '__main__' :
     data_dir = os.getenv('FINANCE_DATA') #main directory
     features_path = '/home/ak/Data/features_models/features/' #where features are saved
     labels_path = '/home/ak/Data/features_models/labels' #where labels are saved
-
-
     ticker_labels_path = os.path.join(labels_path, ticker + '/NON_DIRECTIONAL')
-    labels_list = os.listdir(ticker_labels_path)
 
     if not os.path.exists(os.path.join(data_dir, ticker)):
         os.makedirs(os.path.join(data_dir, ticker))
@@ -197,9 +194,9 @@ if __name__ == '__main__' :
     if not os.path.exists(ticker_labels_path):
         os.makedirs(ticker_labels_path)
 
-    print "making paths-done-delete"
+    labels_list = os.listdir(ticker_labels_path)
 
-        ####paths####
+    ####paths####
     main_path = '/home/ak/Data/features_models/'
 
     models_path = os.path.join(main_path, 'models')
@@ -208,6 +205,8 @@ if __name__ == '__main__' :
     # hmm_models_path = os.path.join(models_path,'hmm_models') #only if we store the hmm models
     if not os.path.exists(ticker_models_path):
         os.makedirs(ticker_models_path)
+
+    print "making paths-done-delete"
 
     #  Parameters -setting up the HMM etc
     no_states = 2
@@ -228,7 +227,7 @@ if __name__ == '__main__' :
     pi = np.array([0.4, 0.6])
     hmm_.set_up_initials(priors={'tpm': tpm, 'pi': pi})
 
-    no_dates = 3  # <-- this is the number of days you want
+    no_dates = 30  # <-- this is the number of days you want
     start_date = pd.datetime(2017, 6, 1)
     dummy_dates = [start_date + BDay(i) for i in range(no_dates)]
 
@@ -270,7 +269,7 @@ if __name__ == '__main__' :
         data_to_save['TradedPrice'] = initial_price * (1. + data_to_save['ReturnTradedPrice']).cumprod()
         data_to_save.to_csv(os.path.join(file_path, file_name), index=False)
 
-    print "ok-produced data"
+    print "ok-produced data" # can remove this a bit later
 
     init_params = {
         "obs_model_params": {
@@ -301,8 +300,8 @@ if __name__ == '__main__' :
 
     # Create Labels ###
 
-    window = 10
-    threshold = 0.05
+    window = 25
+    threshold = 0.1
 
     labelling_method_params = [{
 
@@ -318,43 +317,24 @@ if __name__ == '__main__' :
         labeller = DataLabellingSimple(label_init)
         labeller.label_training_data(data)
 
-    window = 10
-    threshold = 0.05
-
-    labelling_method_params = [{
-
-        'labelling_method': LabellingChoice.price_move_in_window,
-        'rolling_window': window,
-        # Uncomment below if you want to check a price move only above a certain level
-        'updown_threshold': threshold,  # this is multiplied by 100
-        'threshold_method': ThresholdMethod.arbitrary,
-    }]
-
-    for label_init in labelling_method_params:
-        print label_init
-        labeller = DataLabellingSimple(label_init)
-        labeller.label_training_data(data)
-
-    data_dic = load_data(ticker, which_trading_hours=TradingHours.all_trading_day)
-
-    ## clf fitting##
+    # clf fitting##
     for date, date_hmm in trained_hmms.iteritems():
         feature_engine = hmm_features(date_hmm)
-        features_load = feature_engine.generate_features(data_dic[date])
+        features_load = feature_engine.generate_features(data[date])
         labels_load = pd.read_csv(os.path.join(ticker_labels_path,str(date)+'.csv'))
         features, labels_clean = remove_nans(features_load, labels_load)
         x_std = sc.fit_transform(features.values.astype(np.float))  # fit & transform the features
-        X_train, X_test, y_train, y_test = train_test_split( \
-            x_std, labels_clean, test_size=0.05, random_state=1, stratify=labels_clean)  # probably can get rid of this
+        X_train, X_test, y_train, y_test = train_test_split(
+            x_std, labels_clean, test_size=0.01, random_state=1, stratify=labels_clean)  # probably can get rid of this
         models_cls = FitModels(X_train, y_train)
-        best_clfs = {'SVC': models_cls.svm_clf(kernel_choice="rbf")
-                     # 'RIDGE_clf': models_cls.ridge_clf(),
-                     # 'GBOOST': models_cls.gradient_boost_clf(),
-                     # 'GP_clf': models_cls.gp_clf(),
+        best_clfs = {'SVC': models_cls.svm_clf(kernel_choice="rbf"),
+                      'RIDGE_clf': models_cls.ridge_clf(),
+                     'GBOOST': models_cls.gradient_boost_clf(),
+                      'GP_clf': models_cls.gp_clf()
                      # 'RF_clf': models_cls.random_forest_clf(),
                      }
         # This is sequence for the name of the best classifiers.
-        seq_clf = "_".join(("synth_model",  str(date), labels_clean.columns.values[0], "clfs", ".pickle"))
+        seq_clf = "_".join(("synt_model",  str(date), labels_clean.columns.values[0], "clfs", ".pickle"))
         print("saving the classifiers:", seq_clf)
         pickle.dump(best_clfs, open(os.path.join(ticker_models_path, seq_clf), 'wb'))
 
