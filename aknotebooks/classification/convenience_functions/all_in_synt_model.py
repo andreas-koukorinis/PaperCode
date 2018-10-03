@@ -2,12 +2,9 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-import seaborn as sns
 from pandas.tseries.offsets import BDay
 from hsmm_core.hmm import hmm_engine
 from hsmm_core.observation_models import ExpIndMixDiracGauss
-from hsmm_core.data_utils import load_data, TradingHours
-from hsmm_core.data_utils import load_data, TradingHours
 from hsmm_core.feature_spaces import hmm_features
 from hsmm_core.hmm import hmm_calibration
 from hsmm_core.data_utils import load_data, TradingHours
@@ -190,13 +187,17 @@ if __name__ == '__main__' :
     features_path = '/home/ak/Data/features_models/features/' #where features are saved
     labels_path = '/home/ak/Data/features_models/labels' #where labels are saved
 
+
     ticker_labels_path = os.path.join(labels_path, ticker + '/NON_DIRECTIONAL')
+    labels_list = os.listdir(ticker_labels_path)
 
     if not os.path.exists(os.path.join(data_dir, ticker)):
         os.makedirs(os.path.join(data_dir, ticker))
 
     if not os.path.exists(ticker_labels_path):
         os.makedirs(ticker_labels_path)
+
+    print "making paths-done-delete"
 
         ####paths####
     main_path = '/home/ak/Data/features_models/'
@@ -297,3 +298,65 @@ if __name__ == '__main__' :
     for date, date_hmm in trained_hmms.iteritems():
         feature_engine = hmm_features(date_hmm)
         features = feature_engine.generate_features(data[date])
+
+    # Create Labels ###
+
+    window = 10
+    threshold = 0.05
+
+    labelling_method_params = [{
+
+        'labelling_method': LabellingChoice.price_move_in_window,
+        'rolling_window': window,
+        # Uncomment below if you want to check a price move only above a certain level
+        'updown_threshold': threshold,  # this is multiplied by 100
+        'threshold_method': ThresholdMethod.arbitrary,
+    }]
+
+    for label_init in labelling_method_params:
+        print label_init
+        labeller = DataLabellingSimple(label_init)
+        labeller.label_training_data(data)
+
+    window = 10
+    threshold = 0.05
+
+    labelling_method_params = [{
+
+        'labelling_method': LabellingChoice.price_move_in_window,
+        'rolling_window': window,
+        # Uncomment below if you want to check a price move only above a certain level
+        'updown_threshold': threshold,  # this is multiplied by 100
+        'threshold_method': ThresholdMethod.arbitrary,
+    }]
+
+    for label_init in labelling_method_params:
+        print label_init
+        labeller = DataLabellingSimple(label_init)
+        labeller.label_training_data(data)
+
+    data_dic = load_data(ticker, which_trading_hours=TradingHours.all_trading_day)
+
+    ## clf fitting##
+    for date, date_hmm in trained_hmms.iteritems():
+        feature_engine = hmm_features(date_hmm)
+        features_load = feature_engine.generate_features(data_dic[date])
+        labels_load = pd.read_csv(os.path.join(ticker_labels_path,str(date)+'.csv'))
+        features, labels_clean = remove_nans(features_load, labels_load)
+        x_std = sc.fit_transform(features.values.astype(np.float))  # fit & transform the features
+        X_train, X_test, y_train, y_test = train_test_split( \
+            x_std, labels_clean, test_size=0.05, random_state=1, stratify=labels_clean)  # probably can get rid of this
+        models_cls = FitModels(X_train, y_train)
+        best_clfs = {'SVC': models_cls.svm_clf(kernel_choice="rbf")
+                     # 'RIDGE_clf': models_cls.ridge_clf(),
+                     # 'GBOOST': models_cls.gradient_boost_clf(),
+                     # 'GP_clf': models_cls.gp_clf(),
+                     # 'RF_clf': models_cls.random_forest_clf(),
+                     }
+        # This is sequence for the name of the best classifiers.
+        seq_clf = "_".join(("synth_model",  str(date), labels_clean.columns.values[0], "clfs", ".pickle"))
+        print("saving the classifiers:", seq_clf)
+        pickle.dump(best_clfs, open(os.path.join(ticker_models_path, seq_clf), 'wb'))
+
+
+
