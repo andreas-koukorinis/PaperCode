@@ -327,11 +327,12 @@ if __name__ == '__main__' :
         X_train, X_test, y_train, y_test = train_test_split(
             x_std, labels_clean, test_size=0.01, random_state=1, stratify=labels_clean)  # probably can get rid of this
         models_cls = FitModels(X_train, y_train)
-        best_clfs = {'SVC': models_cls.svm_clf(kernel_choice="rbf"),
-                      'RIDGE_clf': models_cls.ridge_clf(),
-                     'GBOOST': models_cls.gradient_boost_clf(),
-                      'GP_clf': models_cls.gp_clf()
-                     # 'RF_clf': models_cls.random_forest_clf(),
+        best_clfs = {
+            'SVC': models_cls.svm_clf(kernel_choice="rbf"),
+                       'RIDGE_clf': models_cls.ridge_clf(),
+                      'GBOOST': models_cls.gradient_boost_clf(),
+                       'GP_clf': models_cls.gp_clf(),
+                     #'RF_clf': models_cls.random_forest_clf(),
                      }
         # This is sequence for the name of the best classifiers.
         seq_clf = "_".join(("synt_model",  str(date), labels_clean.columns.values[0], "clfs", ".pickle"))
