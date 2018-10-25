@@ -6,7 +6,7 @@ from hsmm_core.prediction_engines import *
 from test_hmm.test_utils import generate_hmm_data_from_priors
 
 ticker = 'SYNT_2states'
-main_path = '/home/ak/Data/features_models/'
+main_path = '/media/ak/WorkDrive/Data/features_models/'
 file_name = 'synthetic_study_' + str(ticker)
 
 path = os.path.join(main_path, file_name)
@@ -147,18 +147,18 @@ def validate_spherical(M):
 
 if __name__ == '__main__':
 
-    state_ratios = np.array([[0.4, 0.4, 0.2], [0.3, 0.2, 0.5], [0.35, 0.35, 0.3]])
+    state_ratios = np.array([[0.4, 0.2, 0.2, 0.2], [0.3, 0.2, 0.4, 0.1], [0.35, 0.15, 0.3, 0.2], [0.15, 0.25, 0.4, 0.2]])
 
-    initial_length = 9000 # length of sequence
+    initial_length = 11000 # length of sequence
     M = 3 # number of copies
-    no_states = 3
+    no_states = 4
 
-    sigmas = [0.5, 0.002,0.01]  # fast and slow
-    lambdas = [1. / 3., 1 / 20., 1/10.]
-    weights = [0.1, 0.4, 0.3]
-    tpm = np.array([[0.4, 0.4, 0.2], [0.3, 0.2, 0.5], [0.35, 0.35, 0.3]])
+    sigmas = [0.5, 0.002, 0.01, 0.1]  # fast and slow
+    lambdas = [1. / 3., 1 / 20., 1/10., 1/7.]
+    weights = [0.1, 0.4, 0.3, 0.2]
+    tpm = np.array([[0.4, 0.2, 0.2, 0.2], [0.3, 0.2, 0.4, 0.1], [0.35, 0.15, 0.3, 0.2], [0.15, 0.25, 0.4, 0.2]])
 
-    pi = np.array([0.35, 0.25, 0.40])
+    pi = np.array([0.35, 0.25, 0.20, 0.20])
 
     # Duration is measured in seconds for now (to be revised). lambda units are seconds^{-1}
     # so here we consider

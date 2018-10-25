@@ -264,7 +264,7 @@ if __name__ == '__main__' :
         data_to_save['TradedTime'] = data_to_save['Duration'].cumsum().apply(lambda dur:
                                                                              (dt.datetime.combine(dd.date(),
                                                                                                   morning_start) + \
-                                                                              dt.timedelta(seconds=dur)).time())
+                                                                              dt.timedelta(seconds=dur))  .time())
 
         data_to_save['TradedPrice'] = initial_price * (1. + data_to_save['ReturnTradedPrice']).cumprod()
         data_to_save.to_csv(os.path.join(file_path, file_name), index=False)
