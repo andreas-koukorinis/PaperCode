@@ -2,11 +2,14 @@ import pandas as pd
 import numpy as np
 import os
 from pandas.tseries.offsets import BDay
-from hsmm_core.hmm import hmm_engine
+
 from hsmm_core.observation_models import ExpIndMixDiracGauss
 from hsmm_core.feature_spaces import hmm_features
-from hsmm_core.hmm import hmm_calibration
-from hsmm_core.data_utils import load_data, TradingHours
+from hsmm_core.hsmm_runner import HmmCalibration
+
+from hsmm_core.hmm import hmm_impl
+
+from hsmm_core.data_utils import DataLoader, TradingHours
 from hsmm_core.labelling import DataLabellingSimple
 from hsmm_core.consts import ThresholdMethod, LabellingChoice
 import pickle
@@ -38,7 +41,7 @@ def remove_nans(features_tuple, labels, idx=1):
     features_df = pd.concat([features_tuple[0], features_tuple[1], features_tuple[2], \
                              features_tuple[3]], axis=1, sort=False)
     labels_only = labels.drop(columns=['ReturnTradedPrice', 'Duration', 'states', 'TradedTime',
-                                       'TradedPrice', 'ticker'], axis=1)
+                                       'TradedPrice'], axis=1)
     df_concat = pd.concat([features_df, labels_only.iloc[:, 0:idx]], axis=1, sort='False')
     # only using 1st set of labels- but we can re-write this a bit
     df_x_nan = df_concat.dropna()  # dropping all nans
@@ -61,41 +64,42 @@ def prec_recall_report(y_true, y_predict):
 ##### classes####
 
 #####OOP#####
-class DataLoader(object):
-    def __init__(self, path_, ticker):
-        self.main_path = path_
-        self.ticker = ticker
-        self.labels_path = os.path.join(self.main_path, 'labels')
-        self.features_path = os.path.join(self.main_path, 'features')
-        self.ticker_labels_path = os.path.join(self.labels_path, self.ticker)
-        self.ticker_features_path = os.path.join(self.features_path, self.ticker)
 
-    def ticker_features(self, date):
-        file_loc = os.path.join(self.ticker_features_path, str(date) + '.pickle')
-        with open(file_loc, 'rb') as handle:
-            ticker_features = pickle.load(handle)
-        return ticker_features
-
-    def ticker_labels_pickle(self, date):
-        file_loc = os.path.join(self.ticker_labels_path, str(date) + '.pickle')
-        with open(file_loc, 'rb') as handle:
-            ticker_labels = pickle.load(handle)
-        return ticker_labels
-
-    def ticker_labels_csv(self, date):
-        file_loc = os.path.join(self.ticker_labels_path, str(date) + '.csv')
-        ticker_labels = pd.read_csv(file_loc)
-        return ticker_labels
-
-    @staticmethod
-    def open_pickle_file(path, pickle_file):
-        file_loc = os.path.join(path, pickle_file)
-        pickle_to_file = pickle.load(open(file_loc, "rb"))
-        return pickle_to_file
-
-    @staticmethod
-    def get_date_from_file(file_, numb_):
-        return os.path.splitext(file_[numb_])[0]
+# class DataLoader(object):
+#     def __init__(self, path_, ticker):
+#         self.main_path = path_
+#         self.ticker = ticker
+#         self.labels_path = os.path.join(self.main_path, 'labels')
+#         self.features_path = os.path.join(self.main_path, 'features')
+#         self.ticker_labels_path = os.path.join(self.labels_path, self.ticker)
+#         self.ticker_features_path = os.path.join(self.features_path, self.ticker)
+#
+#     def ticker_features(self, date):
+#         file_loc = os.path.join(self.ticker_features_path, str(date) + '.pickle')
+#         with open(file_loc, 'rb') as handle:
+#             ticker_features = pickle.load(handle)
+#         return ticker_features
+#
+#     def ticker_labels_pickle(self, date):
+#         file_loc = os.path.join(self.ticker_labels_path, str(date) + '.pickle')
+#         with open(file_loc, 'rb') as handle:
+#             ticker_labels = pickle.load(handle)
+#         return ticker_labels
+#
+#     def ticker_labels_csv(self, date):
+#         file_loc = os.path.join(self.ticker_labels_path, str(date) + '.csv')
+#         ticker_labels = pd.read_csv(file_loc)
+#         return ticker_labels
+#
+#     @staticmethod
+#     def open_pickle_file(path, pickle_file):
+#         file_loc = os.path.join(path, pickle_file)
+#         pickle_to_file = pickle.load(open(file_loc, "rb"))
+#         return pickle_to_file
+#
+#     @staticmethod
+#     def get_date_from_file(file_, numb_):
+#         return os.path.splitext(file_[numb_])[0]
 
 
 class PriceIndicators(object):
@@ -181,11 +185,11 @@ class FitModels(object):
 
 if __name__ == '__main__' :
     #  setting locations
-    ticker = 'test_SYNT_2states' #testing a new synthetic ticker
+    ticker = 'SYNT_2states' #testing a new synthetic ticker
 
     data_dir = os.getenv('FINANCE_DATA') #main directory
-    features_path = '/home/ak/Data/features_models/features/' #where features are saved
-    labels_path = '/home/ak/Data/features_models/labels' #where labels are saved
+    features_path = os.path.join(os.path.expanduser("~"), 'Data/features_models/features/') #where features are saved
+    labels_path = os.path.join(os.path.expanduser("~"), 'Data/features_models/labels') #where labels are saved
     ticker_labels_path = os.path.join(labels_path, ticker + '/NON_DIRECTIONAL')
 
     if not os.path.exists(os.path.join(data_dir, ticker)):
@@ -197,7 +201,7 @@ if __name__ == '__main__' :
     labels_list = os.listdir(ticker_labels_path)
 
     ####paths####
-    main_path = '/home/ak/Data/features_models/'
+    main_path = os.path.join(os.path.expanduser("~"), 'Data/features_models/')
 
     models_path = os.path.join(main_path, 'models')
     ticker_models_path = os.path.join(models_path, ticker)
@@ -220,12 +224,12 @@ if __name__ == '__main__' :
     obs_model = ExpIndMixDiracGauss(no_states)
     obs_model.set_up_initials(priors={'sigmas': sigmas, 'lambdas': lambdas, 'weights': weights})
 
-    hmm_ = hmm_engine(obs_model, no_states)
+    hmm_engine = hmm_impl(obs_model, no_states)
 
     # set up some priors
     tpm = np.array([[0.4, 0.6], [0.7, 0.3]])
     pi = np.array([0.4, 0.6])
-    hmm_.set_up_initials(priors={'tpm': tpm, 'pi': pi})
+    hmm_engine.set_up_initials(priors={'tpm': tpm, 'pi': pi})
 
     no_dates = 30  # <-- this is the number of days you want
     start_date = pd.datetime(2017, 6, 1)
@@ -244,7 +248,7 @@ if __name__ == '__main__' :
     initial_price = 100
 
     for dd in dummy_dates:
-        random_states = hmm_.sample_states(rng=rng, length=no_points)
+        random_states = hmm_engine.sample_states(rng=rng, length=no_points)
         observation_points = obs_model.sample_data(no_points, rng=rng, state=random_states)
         # The first duration is always zero
         observation_points[0, 0] = 0.
@@ -270,33 +274,32 @@ if __name__ == '__main__' :
         data_to_save.to_csv(os.path.join(file_path, file_name), index=False)
 
     print "ok-produced data" # can remove this a bit later
-
-    init_params = {
-        "obs_model_params": {
-            'obs_model_name': 'ExpIndMixDiracGauss',
-            'em_init_method': InitialisationMethod.cluster
-
-        },
-        "hidden_model_params": {
-            'no_hidden_states': no_states,
-            'pi': pi,
-            'tpm': tpm,
-            'em_init_method': InitialisationMethod.uniform
-        },
-        "update_tag": 'tpsml'
+    data_loader_init = {
+        'trading_hours_filter': TradingHours.only_mkt_hours
     }
 
-    data = load_data(ticker, which_trading_hours=TradingHours.all_trading_day) #prob dont need this
+    hmm_init = {
+        'obs_model_name': 'CensoredExpIndMixDiracGauss',
+        'em_obs_init_method': InitialisationMethod.cluster,
+        'em_hidden_init_method': InitialisationMethod.uniform,
+        'no_hidden_states': no_states,
+        'update_tag': 'tpsml'
+    }
 
-    hmm_calibration_engine = hmm_calibration(no_parallel_procs=None,
-                                             init_params=init_params)
+    data_loader = DataLoader(**data_loader_init)
+    # keep the hash of the data loader to uniquely identify how the data was loaded ( perhaps a dollar clock was
+    # used), as this affects the calibration of the hmm
+    data_loader_hash = data_loader.data_loader_hash()
 
-    trained_hmms = hmm_calibration_engine.hmm_fit_func(ticker, data, trd_hours_filter,
-                                                       force_recalc=False)
+    data = data_loader.load_trades_data(ticker, start_date=start_date, end_date=dummy_dates[-1])
 
-    for date, date_hmm in trained_hmms.iteritems():
-        feature_engine = hmm_features(date_hmm)
-        features = feature_engine.generate_features(data[date])
+    hmm_calibration_engine = HmmCalibration(init_params=hmm_init)
+    hmm_calibration_engine.run_calibration_all_data(ticker, data, data_loader_hash,
+                                                    force_recalc=False, use_multiprocessing=False,
+                                                    n_processes=2)
+
+    # Create the hmm feature engine and for every change the hmm model in the features engine
+    features_engine = hmm_features()
 
     # Create Labels ###
 
@@ -317,11 +320,18 @@ if __name__ == '__main__' :
         labeller = DataLabellingSimple(label_init)
         labeller.label_training_data(data)
 
-    # clf fitting##
-    for date, date_hmm in trained_hmms.iteritems():
-        feature_engine = hmm_features(date_hmm)
-        features_load = feature_engine.generate_features(data[date])
-        labels_load = pd.read_csv(os.path.join(ticker_labels_path,str(date)+'.csv'))
+    # TODO IS THIS WHAT YOU WANTED TO DO ? SAVE THE DATA WITH LABELS OR JUST THE LABELS ?
+    for date, date_data in data.iteritems():
+        date_data.to_csv(os.path.join(ticker_labels_path, str(date)+'.csv'))
+
+    # Iterate through dates, load the stored hmm, make the features_engine point at that, and use the labels
+    # already added as columns to the data data frames
+    for date, date_data in data.iteritems():
+        stored_hmm, _ = hmm_calibration_engine.get_calibrated_hmm(ticker, date, data_loader_hash)
+
+        features_engine.hmm = stored_hmm
+        features_load = features_engine.generate_features(data[date])
+        labels_load = pd.read_csv(os.path.join(ticker_labels_path, str(date)+'.csv'))
         features, labels_clean = remove_nans(features_load, labels_load)
         x_std = sc.fit_transform(features.values.astype(np.float))  # fit & transform the features
         X_train, X_test, y_train, y_test = train_test_split(
