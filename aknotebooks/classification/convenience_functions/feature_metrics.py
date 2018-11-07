@@ -6,21 +6,33 @@ from hsmm_core.prediction_engines import *
 from test_hmm.test_utils import generate_hmm_data_from_priors
 
 ticker = 'SYNT_2states'
-main_path = '/home/ak/Documents/Data/features_models/'
+main_path = '/media/ak/WorkDrive/Data/features_models/'
 file_name = 'synthetic_study_' + str(ticker)
 
 path = os.path.join(main_path, file_name)
 
 
 def states_from_fixed_ratios(ratios, total_length):
+    # Make sure every entry in ratios has the same length, which represents the number of states
+    no_states_in_each_ratio = {len(rr) for rr in ratios}
+    if len(no_states_in_each_ratio) > 1:
+        raise ValueError("Not all ratios have the same length")
+
+    no_states_in_each_ratio = no_states_in_each_ratio.pop()
+
     states = np.array([], dtype=np.int64)
+    what_states = np.arange(no_states_in_each_ratio)
+
     ratios_ids = np.arange(len(ratios))
     rng = np.random.RandomState(345)
     while len(states) < total_length:
         ratio = ratios[rng.choice(ratios_ids)]
-        # print ratio
-        states = np.append(states, np.append(np.repeat(0, 100 * ratio[0]), np.repeat(1, 100 * ratio[1])))
-        # print len(states)
+        # Mix states to create some noise
+
+        rng.shuffle(what_states)
+        for ss in what_states:
+            states = np.append(states, np.repeat(ss, 100 * ratio[ss]))
+
     return states
 
 
@@ -114,7 +126,7 @@ def features_sets_and_metrics(no_states, M, T, states, priors):
         # Todo: adapt the spherical coord function to work in 2d in order to do gamma
         # gamma_polar[m] = np.apply_along_axis(spherical_3d, 1, gammas[m])
 
-    return ksi_metrics, im_metrics, fischer_polar #, gamma_polar
+    return all_features, ksi_metrics, im_metrics, fischer_polar #, gamma_polar
 
 
 def validate_spherical(M):
@@ -135,21 +147,22 @@ def validate_spherical(M):
 
 if __name__ == '__main__':
 
-    state_ratios = np.array([[0.2, 0.05], [0.4, 0.1], [0.8, 0.2]])
+    state_ratios = np.array([[0.4, 0.2, 0.2, 0.2], [0.3, 0.2, 0.4, 0.1], [0.35, 0.15, 0.3, 0.2], [0.15, 0.25, 0.4, 0.2]])
 
-    inital_length = 15 # length of sequence
-    M = 100 # number of copies
-    no_states = 2
+    initial_length = 11000 # length of sequence
+    M = 3 # number of copies
+    no_states = 4
 
-    sigmas = [0.05, 0.002]  # fast and slow
-    lambdas = [1. / 35., 1 / 20.]
-    weights = [0.1, 0.2]
-    tpm = np.array([[0.45, 0.55], [0.8, 0.2]])
-    pi = np.array([0.4, 0.6])
+    sigmas = [0.5, 0.002, 0.01, 0.1]  # fast and slow
+    lambdas = [1. / 3., 1 / 20., 1/10., 1/7.]
+    weights = [0.1, 0.4, 0.3, 0.2]
+    tpm = np.array([[0.4, 0.2, 0.2, 0.2], [0.3, 0.2, 0.4, 0.1], [0.35, 0.15, 0.3, 0.2], [0.15, 0.25, 0.4, 0.2]])
+
+    pi = np.array([0.35, 0.25, 0.20, 0.20])
 
     # Duration is measured in seconds for now (to be revised). lambda units are seconds^{-1}
     # so here we consider
-    fixed_states = states_from_fixed_ratios(state_ratios, inital_length)
+    fixed_states = states_from_fixed_ratios(state_ratios, initial_length)
 
     # T will be different from initial_length b/c we generate states in chunks to respect ratios.
     T = len(fixed_states)
@@ -157,4 +170,23 @@ if __name__ == '__main__':
     # set up some priors
     priors = {'sigmas': sigmas, 'lambdas': lambdas, 'weights': weights, 'tpm': tpm, 'pi': pi}
 
-    ksi_metrics, im_metrics, fischer_polar = features_sets_and_metrics(no_states, M, T, fixed_states, priors)
+    all_features, ksi_metrics, im_metrics, fischer_polar = features_sets_and_metrics(no_states, M, T, fixed_states, priors)
+
+    np.save(os.path.join(main_path, 'ksi_metrics_len'\
+                         +str(initial_length)+'states'+\
+                         str(no_states)+'.npy'), ksi_metrics)
+
+    np.save(os.path.join(main_path, 'im_metrics_len'\
+                         + str(initial_length) + 'states' + \
+                         str(no_states) + '.npy'), im_metrics)
+
+    np.save(os.path.join(main_path, 'fischer_polar_len' \
+                         + str(initial_length) + 'states' + \
+                         str(no_states) + '.npy'), fischer_polar)
+
+    np.save(os.path.join(main_path, 'fixed_states_len' \
+                         + str(initial_length) + '_states' + \
+                         str(no_states) + '.npy'), fixed_states)
+
+
+

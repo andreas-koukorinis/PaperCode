@@ -41,8 +41,6 @@ from sklearn.metrics import roc_curve
 from sklearn.model_selection import learning_curve
 from sklearn.model_selection import ShuffleSplit
 
-###Huber Norm Models###
-sys.path.append('/home/ak/Documents/Research/QFPaper/Huber-Norm-Regularizer')
 from huber_svm import HuberSVC
 from classification_utilities import off_set, simpleInputs, ensure_dir, symbol_path_
 ###

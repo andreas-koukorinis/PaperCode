@@ -6,7 +6,7 @@ import pickle
 from hsmm_core.consts import ThresholdMethod, LabellingChoice
 
 symbols_ftse= ['SYNT_2states']
-_features_path='/home/ak/Documents/Data/features_models/features/'
+_features_path='/home/ak/Data/features_models/features/'
 
 
 n_hidden_states = 2

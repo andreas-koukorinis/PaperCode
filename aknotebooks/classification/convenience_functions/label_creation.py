@@ -2,6 +2,13 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+<<<<<<< HEAD
+=======
+
+from pandas.tseries.offsets import BDay
+from hsmm_core.hmm import hmm_engine
+from hsmm_core.observation_models import ExpIndMixDiracGauss
+>>>>>>> 7260276760e28f9aab576bd76c2b39623bcd7b18
 from hsmm_core.data_utils import load_data, TradingHours
 from hsmm_core.labelling import DataLabellingSimple
 from hsmm_core.consts import ThresholdMethod, LabellingChoice
@@ -14,6 +21,7 @@ ticker = 'SYNT_2states'
 trading_hours_filter = TradingHours.all_trading_day
 data = load_data(ticker, which_trading_hours=trading_hours_filter)
 labels_path= '/home/ak/Data/features_models/labels'
+<<<<<<< HEAD
 ticker_labels_path = os.path.join(labels_path,ticker)
 
 
@@ -31,16 +39,37 @@ labelling_method_params = [
     'rolling_window': 5,
     # Uncomment below if you want to check a price move only above a certain level
     'updown_threshold': 0.01,
+=======
+ticker_labels_path = os.path.join(labels_path,ticker+'/NON_DIRECTIONAL')
+
+labelling_method_params = [{
+
+    'labelling_method': LabellingChoice.price_move_in_window,
+    'rolling_window': 2,
+    # Uncomment below if you want to check a price move only above a certain level
+    'updown_threshold': 0.1,
+>>>>>>> 7260276760e28f9aab576bd76c2b39623bcd7b18
     'threshold_method': ThresholdMethod.arbitrary,
 }]
 
 for label_init in labelling_method_params:
     labeller = DataLabellingSimple(label_init)
     labeller.label_training_data(data)
+<<<<<<< HEAD
+=======
 
-keys_=data.keys()
+keys_ = data.keys()
 
+for key_, _ in enumerate(keys_):
+    data[keys_[key_]].to_csv(ticker_labels_path+'/'+str(keys_[key_])+'.csv', index=False)
+
+>>>>>>> 7260276760e28f9aab576bd76c2b39623bcd7b18
+
+
+<<<<<<< HEAD
 for key, _ in enumerate(keys_):
     data[keys_[key]].to_csv(ticker_labels_path+'/non_directional_labels/'+str(keys_[key])+'.csv',index=False)
+=======
+>>>>>>> 7260276760e28f9aab576bd76c2b39623bcd7b18
 #write this in a more pythonic way
 
