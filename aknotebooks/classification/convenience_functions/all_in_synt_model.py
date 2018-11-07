@@ -320,34 +320,34 @@ if __name__ == '__main__' :
         labeller = DataLabellingSimple(label_init)
         labeller.label_training_data(data)
 
-    # TODO IS THIS WHAT YOU WANTED TO DO ? SAVE THE DATA WITH LABELS OR JUST THE LABELS ?
+    # # TODO IS THIS WHAT YOU WANTED TO DO ? SAVE THE DATA WITH LABELS OR JUST THE LABELS ?
     for date, date_data in data.iteritems():
         date_data.to_csv(os.path.join(ticker_labels_path, str(date)+'.csv'))
 
-    # Iterate through dates, load the stored hmm, make the features_engine point at that, and use the labels
-    # already added as columns to the data data frames
-    for date, date_data in data.iteritems():
-        stored_hmm, _ = hmm_calibration_engine.get_calibrated_hmm(ticker, date, data_loader_hash)
-
-        features_engine.hmm = stored_hmm
-        features_load = features_engine.generate_features(data[date])
-        labels_load = pd.read_csv(os.path.join(ticker_labels_path, str(date)+'.csv'))
-        features, labels_clean = remove_nans(features_load, labels_load)
-        x_std = sc.fit_transform(features.values.astype(np.float))  # fit & transform the features
-        X_train, X_test, y_train, y_test = train_test_split(
-            x_std, labels_clean, test_size=0.01, random_state=1, stratify=labels_clean)  # probably can get rid of this
-        models_cls = FitModels(X_train, y_train)
-        best_clfs = {
-            'SVC': models_cls.svm_clf(kernel_choice="rbf"),
-                       'RIDGE_clf': models_cls.ridge_clf(),
-                      'GBOOST': models_cls.gradient_boost_clf(),
-                       'GP_clf': models_cls.gp_clf(),
-                     #'RF_clf': models_cls.random_forest_clf(),
-                     }
-        # This is sequence for the name of the best classifiers.
-        seq_clf = "_".join(("synt_model",  str(date), labels_clean.columns.values[0], "clfs", ".pickle"))
-        print("saving the classifiers:", seq_clf)
-        pickle.dump(best_clfs, open(os.path.join(ticker_models_path, seq_clf), 'wb'))
-
-
-
+    # # Iterate through dates, load the stored hmm, make the features_engine point at that, and use the labels
+    # # already added as columns to the data data frames
+    # for date, date_data in data.iteritems():
+    #     stored_hmm, _ = hmm_calibration_engine.get_calibrated_hmm(ticker, date, data_loader_hash)
+    #
+    #     features_engine.hmm = stored_hmm
+    #     features_load = features_engine.generate_features(data[date])
+    #     labels_load = pd.read_csv(os.path.join(ticker_labels_path, str(date)+'.csv'))
+    #     features, labels_clean = remove_nans(features_load, labels_load)
+    #     x_std = sc.fit_transform(features.values.astype(np.float))  # fit & transform the features
+    #     X_train, X_test, y_train, y_test = train_test_split(
+    #         x_std, labels_clean, test_size=0.01, random_state=1, stratify=labels_clean)  # probably can get rid of this
+    #     models_cls = FitModels(X_train, y_train)
+    #     best_clfs = {
+    #         'SVC': models_cls.svm_clf(kernel_choice="rbf"),
+    #                    'RIDGE_clf': models_cls.ridge_clf(),
+    #                   'GBOOST': models_cls.gradient_boost_clf(),
+    #                    'GP_clf': models_cls.gp_clf(),
+    #                  #'RF_clf': models_cls.random_forest_clf(),
+    #                  }
+    #     # This is sequence for the name of the best classifiers.
+    #     seq_clf = "_".join(("synt_model",  str(date), labels_clean.columns.values[0], "clfs", ".pickle"))
+    #     print("saving the classifiers:", seq_clf)
+    #     pickle.dump(best_clfs, open(os.path.join(ticker_models_path, seq_clf), 'wb'))
+    #
+    #
+    #
