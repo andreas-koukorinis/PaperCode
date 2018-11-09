@@ -342,23 +342,23 @@ for date, date_hmm in trained_hmms.iteritems():
     print("saving the classifiers:",seq_clf)
     pickle.dump(best_clfs, open(os.path.join(ticker_models_path,seq_clf), 'wb'))
 
-    hmm_fwd_dates = fwd_dates(_dates_list=models_dates, _key_date=date)  # create fwd out of sample dates
-
-    for fwd_date in hmm_fwd_dates:  # OOS testing
-
-        fwd_features = feature_engine.generate_features(data_dic[fwd_date])
-        fwd_labels = data_cls.ticker_labels_csv(date=fwd_date)
-        features_fwd, labels_fwd = remove_nans(fwd_features, fwd_labels)
-        x_std_fwd = sc.fit_transform(features_fwd.values.astype(np.float))  # fit & transform the features
-        y_true = labels_fwd
-        CLFs = ['SVC','RIDGE_clf','GBOOST','GP_clf','RF_clf']
-        for clf in CLFs:
-            y_predict_clf = best_clfs[clf].predict(x_std_fwd)
-            classif_rate = np.mean(y_predict_clf.ravel()== y_true.values.ravel())*100
-            print ("Classification Rate for %s: %f" % (clf,classif_rate))
-            clf_report = prec_recall_report(y_true, y_predict_clf)
-            report_name = "_".join(('performance', 'report', 'ticker', str(fwd_date), '.csv'))
-            report_loc = os.path.join(ticker_predictions_path, report_name)
-            clf_report.to_csv(report_name)
+    # hmm_fwd_dates = fwd_dates(_dates_list=models_dates, _key_date=date)  # create fwd out of sample dates
+    #
+    # for fwd_date in hmm_fwd_dates:  # OOS testing
+    #
+    #     fwd_features = feature_engine.generate_features(data_dic[fwd_date])
+    #     fwd_labels = data_cls.ticker_labels_csv(date=fwd_date)
+    #     features_fwd, labels_fwd = remove_nans(fwd_features, fwd_labels)
+    #     x_std_fwd = sc.fit_transform(features_fwd.values.astype(np.float))  # fit & transform the features
+    #     y_true = labels_fwd
+    #     CLFs = ['SVC','RIDGE_clf','GBOOST','GP_clf','RF_clf']
+    #     for clf in CLFs:
+    #         y_predict_clf = best_clfs[clf].predict(x_std_fwd)
+    #         classif_rate = np.mean(y_predict_clf.ravel()== y_true.values.ravel())*100
+    #         print ("Classification Rate for %s: %f" % (clf,classif_rate))
+    #         clf_report = prec_recall_report(y_true, y_predict_clf)
+    #         report_name = "_".join(('performance', 'report', 'ticker', str(fwd_date), '.csv'))
+    #         report_loc = os.path.join(ticker_predictions_path, report_name)
+    #         clf_report.to_csv(report_name)
 
 

@@ -6,7 +6,7 @@ from hsmm_core.prediction_engines import *
 from test_hmm.test_utils import generate_hmm_data_from_priors
 
 ticker = 'SYNT_2states'
-main_path = '/media/ak/WorkDrive/Data/features_models/'
+main_path = '/home/ak/Data/features_models/'
 file_name = 'synthetic_study_' + str(ticker)
 
 path = os.path.join(main_path, file_name)
