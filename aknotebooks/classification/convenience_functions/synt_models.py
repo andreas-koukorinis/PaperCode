@@ -51,7 +51,7 @@ def remove_nans(features_tuple, labels, idx=1):
     features_df = pd.concat([features_tuple[0], features_tuple[1], features_tuple[2], \
                              features_tuple[3]], axis=1, sort=False)
     labels_only = labels.drop(columns=['ReturnTradedPrice', 'Duration', 'states', 'TradedTime',
-                                       'TradedPrice', 'ticker'], axis=1)
+                                       'TradedPrice'], axis=1)
     df_concat = pd.concat([features_df, labels_only.iloc[:, 0:idx]], axis=1, sort='False')
     # only using 1st set of labels- but we can re-write this a bit
     df_x_nan = df_concat.dropna()  # dropping all nans
@@ -218,19 +218,32 @@ def remove_last_element(arr):
 ####
 
 ticker = 'SYNT_2states'
-features_path='/home/ak/Data/features_models/features/'
 
-####paths####
-labels_path = '/home/ak/Data/features_models/labels/NON_DIRECTIONAL/'
-main_path = '/home/ak/Data/features_models/'
 
-models_path = os.path.join(main_path,'models')
+data_dir = os.getenv('FINANCE_DATA')
+features_path = os.path.join(data_dir, 'features_models/features/')
+labels_path = os.path.join(data_dir, 'features_models/labels')
+
+ticker_labels_path = os.path.join(labels_path, ticker + '/NON_DIRECTIONAL')
+
+if not os.path.exists(os.path.join(data_dir, ticker)):
+    os.makedirs(os.path.join(data_dir, ticker))
+
+if not os.path.exists(ticker_labels_path):
+    os.makedirs(ticker_labels_path)
+
+    ####paths####
+
+
+models_path = os.path.join(data_dir, 'models')
+ticker_models_path = os.path.join(models_path, ticker)
+models_path = os.path.join(data_dir ,'models')
 hmm_models_path = os.path.join(models_path,'hmm_models')
 features_ticker_path = os.path.join(features_path, ticker)
-predictions_path = os.path.join(main_path, 'predictions')
+predictions_path = os.path.join(data_dir, 'predictions')
 
 
-features_path = os.path.join(main_path, 'features')
+features_path = os.path.join(data_dir, 'features')
 ticker_labels_path = os.path.join(labels_path, ticker)
 ticker_models_path = os.path.join(models_path, ticker)
 ticker_predictions_path = os.path.join(predictions_path, ticker)
@@ -247,7 +260,7 @@ features_list = os.listdir(ticker_features_path)
 ###
 
 ####
-data_cls = DataLoader(path_=main_path, ticker=ticker)
+data_cls = DataLoader(path_=data_dir, ticker=ticker)
 idx = 1  # take first label-index for the data-frame of labels
 ######
 
