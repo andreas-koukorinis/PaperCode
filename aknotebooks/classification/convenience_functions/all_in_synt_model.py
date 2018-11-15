@@ -231,8 +231,8 @@ if __name__ == '__main__' :
     pi = np.array([0.4, 0.6])
     hmm_engine.set_up_initials(priors={'tpm': tpm, 'pi': pi})
 
-    no_dates = 3  # <-- this is the number of days you want
-    start_date = pd.datetime(2017, 6, 1)
+    no_dates = 35  # <-- this is the number of days you want
+    start_date = pd.datetime(2016, 6, 1)
     dummy_dates = [start_date + BDay(i) for i in range(no_dates)]
 
     no_points = 5000
@@ -331,7 +331,7 @@ if __name__ == '__main__' :
 
         features_engine.hmm = stored_hmm
         features_load = features_engine.generate_features(data[date])
-        labels_load = pd.read_csv(os.path.join(ticker_labels_path, str(date)+'.csv'), index=False)
+        labels_load = pd.read_csv(os.path.join(ticker_labels_path, str(date)+'.csv'), index_col=0)
         features, labels_clean = remove_nans(features_load, labels_load)
         x_std = sc.fit_transform(features.values.astype(np.float))  # fit & transform the features
         X_train, X_test, y_train, y_test = train_test_split(
@@ -340,8 +340,8 @@ if __name__ == '__main__' :
         best_clfs = {
             'SVC': models_cls.svm_clf(kernel_choice="rbf"),
                        'RIDGE_clf': models_cls.ridge_clf(),
-                      'GBOOST': models_cls.gradient_boost_clf(),
-                       'GP_clf': models_cls.gp_clf(),
+                      #'GBOOST': models_cls.gradient_boost_clf(),
+                       'GP_clf': models_cls.gp_clf()
                      #'RF_clf': models_cls.random_forest_clf(),
                      }
         # This is sequence for the name of the best classifiers.
@@ -349,5 +349,4 @@ if __name__ == '__main__' :
         print("saving the classifiers:", seq_clf)
         pickle.dump(best_clfs, open(os.path.join(ticker_models_path, seq_clf), 'wb'))
 
-    #
-    #
+
