@@ -1,5 +1,5 @@
 import os
-
+import pandas as pd
 from hsmm_core.hmm import *
 from hsmm_core.prediction_engines import *
 
@@ -147,18 +147,18 @@ def validate_spherical(M):
 
 if __name__ == '__main__':
 
-    state_ratios = np.array([[0.4, 0.2, 0.2, 0.2], [0.3, 0.2, 0.4, 0.1], [0.35, 0.15, 0.3, 0.2], [0.15, 0.25, 0.4, 0.2]])
+    state_ratios = np.array([[0.4, 0.6], [0.8, 0.2]])
 
-    initial_length = 11000 # length of sequence
+    initial_length = 10000 # length of sequence
     M = 3 # number of copies
-    no_states = 4
+    no_states = 2
 
-    sigmas = [0.5, 0.002, 0.01, 0.1]  # fast and slow
-    lambdas = [1. / 3., 1 / 20., 1/10., 1/7.]
-    weights = [0.1, 0.4, 0.3, 0.2]
-    tpm = np.array([[0.4, 0.2, 0.2, 0.2], [0.3, 0.2, 0.4, 0.1], [0.35, 0.15, 0.3, 0.2], [0.15, 0.25, 0.4, 0.2]])
+    sigmas = [0.5, 0.002]  # fast and slow
+    lambdas = [1. / 3., 1 / 20.]
+    weights = [0.7, 0.3]
+    tpm = np.array([[0.4, 0.6], [0.3, 0.7]])
 
-    pi = np.array([0.35, 0.25, 0.20, 0.20])
+    pi = np.array([0.45, 0.55])
 
     # Duration is measured in seconds for now (to be revised). lambda units are seconds^{-1}
     # so here we consider

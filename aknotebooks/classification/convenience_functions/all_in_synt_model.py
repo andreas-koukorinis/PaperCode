@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 from pandas.tseries.offsets import BDay
-
+from hsmm_core.utils import mc_limiting_distribution, states_from_limit_dist
 from hsmm_core.observation_models import ExpIndMixDiracGauss
 from hsmm_core.feature_spaces import hmm_features
 from hsmm_core.hsmm_runner import HmmCalibration
@@ -185,7 +185,7 @@ class FitModels(object):
 
 if __name__ == '__main__' :
     #  setting locations
-    ticker = 'SYNT_2states' #testing a new synthetic ticker
+    ticker = 'REL.L' #testing a new synthetic ticker
 
     data_dir = os.getenv('FINANCE_DATA') #main directory
     features_path = os.path.join(os.path.expanduser("~"), 'Data/features_models/features/') #where features are saved
@@ -213,13 +213,13 @@ if __name__ == '__main__' :
     print "making paths-done-delete"
 
     #  Parameters -setting up the HMM etc
-    no_states = 2
-    sigmas = [0.05, 0.002]  # fast and slow
+    no_states = 3
+    sigmas = [0.05, 0.002, 0.1]  # fast, slow, super-fast
     # Duration is measured in seconds for now (to be revised). lambda units are seconds^{-1}
     # so here we consider
 
-    lambdas = [1. / 35., 1. / 10.]
-    weights = [0.1, 0.6]
+    lambdas = [1. / 5., 1./2., 3.]
+    weights = [0.35, 0.3, 0.35]
 
     obs_model = ExpIndMixDiracGauss(no_states)
     obs_model.set_up_initials(priors={'sigmas': sigmas, 'lambdas': lambdas, 'weights': weights})
@@ -227,15 +227,15 @@ if __name__ == '__main__' :
     hmm_engine = hmm_impl(obs_model, no_states)
 
     # set up some priors
-    tpm = np.array([[0.4, 0.6], [0.7, 0.3]])
-    pi = np.array([0.4, 0.6])
+    tpm = np.array([[0.5, 0.3, 0.2], [0.4, 0.2, 0.4], [0.3, 0.6, 0.1]])
+    pi = np.array([0.3, 0.5, 0.2])
     hmm_engine.set_up_initials(priors={'tpm': tpm, 'pi': pi})
 
     no_dates = 35  # <-- this is the number of days you want
     start_date = pd.datetime(2016, 6, 1)
     dummy_dates = [start_date + BDay(i) for i in range(no_dates)]
 
-    no_points = 5000
+    no_points = 10000
 
     rng = np.random.RandomState(1234)
     trd_hours_filter = TradingHours.all_trading_day
@@ -248,7 +248,7 @@ if __name__ == '__main__' :
     initial_price = 100
 
     for dd in dummy_dates:
-        random_states = hmm_engine.sample_states(rng=rng, length=no_points)
+        random_states = states_from_limit_dist(tpm, no_points)
         observation_points = obs_model.sample_data(no_points, rng=rng, state=random_states)
         # The first duration is always zero
         observation_points[0, 0] = 0.
