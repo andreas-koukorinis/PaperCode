@@ -1,1 +1,0 @@
-Initial Parameters: {'hidden_model_params': {'no_hidden_states': 2, 'em_initialization_method': <initialization_method.uniform: 1>}, 'update_tag': 'tpsml', 'obs_model_params': {'obs_model_name': 'ExpUniGauss', 'epsilon': 1e-05, 'em_initialization_method': <initialization_method.cluster: 3>, 'init_params': {'epsilon': 1e-05}}}
