@@ -75,15 +75,10 @@ def prec_recall_report(y_true, y_predict):
 
 if __name__ == '__main__' :
     #  setting locations
-    ticker_list= [[
-    'SMIN.L', 'CEY.L', 'RR.L',
-    'RTO.L', 'TSCO.L', 'ULVR.L', 'CPI.L', 'LAND.L', 'WPP.L',
-    'UU.L', 'MKS.L', 'BLT.L', 'AV.L', 'VOD.L', 'RDSa.L',
-    'III.L', 'RDSb.L', 'ECM.L', 'PSON.L', 'REL.L', 'IEER.L', 'BARC.L',
-    'GKN.L', 'NG.L', 'RB.L', 'RSA.L', 'ITV.L', 'AAL.L', 'IOG.L', 'SDR.L',
-    'STAN.L', 'MAB.L', 'LGEN.L', 'RBS.L', 'LLOY.L', 'CPG.L', 'HSBA.L',
-    'EGS.L', 'AZN.L', 'SGE.L', 'DMGOa.L', 'APF.L', 'PRU.L', 'CNA.L',
-    'SHP.L', 'DGE.L', 'BATS.L', 'KGF.L', 'CCL.L', 'SPT.L']]
+    ticker_list= [ 'YM1_Comdty', 'VXX_US_Equity', 'XM1_Comdty', 'TU1_Comdty', 'US1_Comdty',
+    'FB1_Comdty', 'KE1_Comdty', 'JB1_Comdty', 'VIX_Index', 'TY1_Comdty',
+    'FV1_Comdty', 'DU1_Comdty', 'XM1_Comdty', 'OE1_Comdty', 'RX1_Comdty', 'G_1_Comdty',
+    'US1_Comdty']
 
     no_states = 3
 
@@ -134,7 +129,7 @@ if __name__ == '__main__' :
         data_loader_hash = data_loader.data_loader_hash()
 
         data = data_loader.load_trades_data(ticker)
-
+        #
         hmm_calibration_engine = HmmCalibration(init_params=hmm_init)
         hmm_calibration_engine.run_calibration_all_data(ticker, data, data_loader_hash,
                                                         force_recalc=False, use_multiprocessing=False,
@@ -142,11 +137,11 @@ if __name__ == '__main__' :
 
         # Create the hmm feature engine and for every change the hmm model in the features engine
         features_engine = hmm_features()
-        #
+        # #
     # # Create Labels ###
 
-        window = 25
-        threshold = 0.1
+        window = 5
+        threshold = 0.001
 
         labelling_method_params = [{
 
@@ -170,22 +165,22 @@ if __name__ == '__main__' :
     #     # # # already added as columns to the data data frames
         now = dt.datetime.now()
 
-        # for date, date_data in data.iteritems():
-        #     new_path = os.path.join(ticker_features_path, str(date)) #create a new path inside features for each date
-        #     if not os.path.exists(new_path):
-        #         os.makedirs(new_path)
-        #     stored_hmm, _ = hmm_calibration_engine.get_calibrated_hmm(ticker, date, data_loader_hash) #model, hash and date
-        #     stored_hmm_file = "_".join(
-        #         (str(ticker),"model_date_:", str(date), str(no_states), "states", "stored_hmm", now.strftime('%Y%m%d'), ".pickle"))
-        #     pickle.dump(stored_hmm, open(os.path.join(ticker_hmm_path, stored_hmm_file), 'wb')) #storing the hmm model using todays date
-        #
-        #     ##get the right features using forward dates###
-        #     features_engine.hmm = stored_hmm #engine for features which is essentialy the fitted hmm on a specific date
-        #     list_fwd_dates = fwd_dates(dates_list=list(data.keys()), key_date=date) #take all the dates ahead of your hmm_date
-        #
-        #     for fwd_date in list_fwd_dates:
-        #         features_load = features_engine.generate_features(data[fwd_date]) #get features using the model but fwd
-        #         features_file = "_".join((str(ticker), str(no_states), "states", "features_date:", str(fwd_date),"now:",
-        #                                   now.strftime('%Y%m%d'), ".pickle"))
-        #         print(features_file)
-        #         pickle.dump(features_load, open(os.path.join(new_path, features_file), 'wb'))
+        for date, date_data in data.iteritems():
+            new_path = os.path.join(ticker_features_path, str(date)) #create a new path inside features for each date
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+            stored_hmm, _ = hmm_calibration_engine.get_calibrated_hmm(ticker, date, data_loader_hash) #model, hash and date
+            stored_hmm_file = "_".join(
+                (str(ticker),"model_date_:", str(date), str(no_states), "states", "stored_hmm", now.strftime('%Y%m%d'), ".pickle"))
+            pickle.dump(stored_hmm, open(os.path.join(ticker_hmm_path, stored_hmm_file), 'wb')) #storing the hmm model using todays date
+
+            ##get the right features using forward dates###
+            features_engine.hmm = stored_hmm #engine for features which is essentialy the fitted hmm on a specific date
+            list_fwd_dates = fwd_dates(dates_list=list(data.keys()), key_date=date) #take all the dates ahead of your hmm_date
+
+            for fwd_date in list_fwd_dates:
+                features_load = features_engine.generate_features(data[fwd_date]) #get features using the model but fwd
+                features_file = "_".join((str(ticker), str(no_states), "states", "features_date:", str(fwd_date),"now:",
+                                          now.strftime('%Y%m%d'), ".pickle"))
+                print(features_file)
+                pickle.dump(features_load, open(os.path.join(new_path, features_file), 'wb'))

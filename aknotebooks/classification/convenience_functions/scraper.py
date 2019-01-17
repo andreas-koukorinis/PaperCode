@@ -134,7 +134,7 @@ class FitModels(object):
                           gamma=[0.0001, 0.001, 0.01, 0.02, 0.05, 0.01])
 
         clf = GridSearchCV(SVC(class_weight='balanced'), param_grid, verbose=1, n_jobs=-1, cv=10)
-        clf = clf.fit(self.X_train, self.y_train)
+        clf=clf.fit(self.X_train, self.y_train)
         return clf
 
     def best_gradient_boost_clf(self):
@@ -206,10 +206,10 @@ def common_member(a, b):
         return ("no common elements")
 
 
+    # all the paths
+    #   sort out locations
 if __name__ == '__main__':
-
     #   data_dir: main directory , data_only_drive: the big drive where everything is saved
-    # data only dir: main drive that has the
 
     data_dir = os.getenv('FINANCE_DATA')
     data_only_drive = '/mnt/usb-Seagate_Expansion_Desk_NA8XEHR6-0:0-part2'  # external date only drive
@@ -223,18 +223,14 @@ if __name__ == '__main__':
     features = os.path.join(features_models, 'features')
 
     # location to save results
-    # this needs to be to data-only drive
     model_save_loc = os.path.join(data_only_drive, 'Data', 'features_models', 'models')
     # from the main directory select all the symbols that are finishing in .L for FTSE
     symbols_ftse = [s for s in os.listdir(features) if s.endswith('.L')]
-    good_symbols = ['CPG.L','ITV.L','AV.L','ULVR.L']
-    # 'CPI.L', 'ULVR.L',  'ECM.L', 'AV.L', 'GKN.L', 'TSCO.L',  'ITV.L',  'BARC.L', 'CPG.L', 'AAL.L', \
-    # 'LGEN.L', 'LAND.L', 'VOD.L', 'HSBA.L', 'RSA.L', 'RDSa.L', 'PRU.L', 'III.L', 'REL.L', 'CNA.L', 'SHP.L', 'MKS.L', 'DMGOa.L', 'RR.L', 'DGE.L', 'BATS.L','MAB.L',]
-    # 'CPI.L', 'ULVR.L',  'ECM.L', 'AV.L', 'GKN.L', 'TSCO.L',  'ITV.L',  'BARC.L', 'CPG.L', 'AAL.L', \
-    # 'LGEN.L', 'LAND.L', 'VOD.L', 'HSBA.L', 'RSA.L', 'RDSa.L', 'PRU.L', 'III.L', 'REL.L', 'CNA.L', 'SHP.L', 'MKS.L']
-    #  ['DMGOa.L', 'RR.L', 'DGE.L', 'BATS.L','MAB.L','KGF.L', 'SPT.L', 'AZN.L']
+    good_symbols = ['KGF.L','AZN.L', 'SHP.L', 'LAND.L', 'GKN.L']
+                    # 'CPI.L', 'ULVR.L',  'ECM.L', 'AV.L', 'GKN.L', 'TSCO.L',  'ITV.L',  'BARC.L', 'CPG.L', 'AAL.L', \
+                    # 'LGEN.L', 'LAND.L', 'VOD.L', 'HSBA.L', 'RSA.L', 'RDSa.L', 'PRU.L', 'III.L', 'REL.L', 'CNA.L', 'SHP.L', 'MKS.L', 'DMGOa.L', 'RR.L', 'DGE.L', 'BATS.L','MAB.L',]
     # this is the central location for all the saved HMM models
-    # problems'MKS.L',
+    #problems'MKS.L',
 
     main_path = os.path.join(data_dir, 'features_models')  # main directory
 
@@ -274,15 +270,11 @@ if __name__ == '__main__':
                                                 'SINGLE_KERNEL')
         for v in all_symbols_d[k].keys():
             print ('second key', v) # and each out of sample that an hmm was fitted
-            # each key has a set of no_days which are itemised by a number
-            # go through each one and iterate over the components which are really out of sample dates
             for day_no in (all_symbols_d[k].keys()):
                 print(day_no)
                 print('doing symbol:', k, 'for date:', day_no)
 
                 # this is the location essentially of all the files for that day, i.e all the forward feature files
-                # so for each fitted hmm date, there is a list of these files for each symbol
-                # this is the list and it contains the full locations so they can be read easily
 
                 oos_file_location = all_symbols_d[k][day_no]
                 # if there are no files, just skip

@@ -152,7 +152,7 @@ for ticker in symbols_ftse: #ticker = 'VOD' ##load data
         # SVC is more expensive so we do a lower number of CV iterations:
         n_jobs=-1
         cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
-        clf = GridSearchCV(SVC(class_weight='balanced'), param_grid, verbose=1, n_jobs=-1, cv=5)
+        an
         logreg = linear_model.LogisticRegression(C=1e5)
         SGD_clf = SGDClassifier(loss="modified_huber", penalty="elasticnet", n_jobs = -1,learning_rate = 'optimal', n_iter = 2000, alpha = 0.00001, fit_intercept=True)
 
@@ -209,6 +209,10 @@ for ticker in symbols_ftse: #ticker = 'VOD' ##load data
         _fitted_model_results['svm_train_accuracy'][_idx, :] = accuracy_score(y_train, y_predict_train)
         _fitted_model_results['svm_train_recall'][_idx, :] = recall_score(y_true=y_train, y_pred=y_predict_train)
         _fitted_model_results['svm_test_F1'][_idx, :] = f1_score(y_true=y_test, y_pred=y_predict)
+        clf_results = ticker_path_ + '/' + str(_keys[_idx]) + '_results_single_svm_'
+        with open(str(clf_results) + '.pkl', 'wb') as f:
+            pickle.dump(_fitted_model_results, f)
+
         clf_results = ticker_path_ + '/' + str(_keys[_idx]) + '_results_single_svm_'
         with open(str(clf_results) + '.pkl', 'wb') as f:
             pickle.dump(_fitted_model_results, f)
