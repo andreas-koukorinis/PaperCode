@@ -233,28 +233,28 @@ if __name__ == '__main__':
 
     model_locations = [symbol_fitted_model_date_loc(test_path, ticker,idx) for idx, date in enumerate(os.listdir(test_path))]
 
-    for model_idx, model_loc in enumerate(model_locations):
-
-        model_date = model_loc.split("/")[8]
-
-        print model_loc
-
-        pickle_to_file = pickle.load(open(model_loc, "rb"))
-
-        # best_estimator = pickle_to_file['SVC'].best_estimator_
-
-        #print('Your symbol is:', ticker, 'and the model date is:' ,model_date)
-
-        # get all the dates of the labels from the labels path - this may be a bit redundant in the end
-
-        labels_dates = sorted([os.listdir(symbol_labels_path)[idx].split(".")[0]
-                               for idx, _ in enumerate(os.listdir(symbol_labels_path))])
-        print labels_dates
-        #need the ability to just keep the +N days ahead of the model. or refit model every 10 days
-
-    # #     # this is the location of the out of sample features
-    # #
-    #     oos_features_path = os.path.join(symbol_features_path, model_date)
+    # for model_idx, model_loc in enumerate(model_locations):
+    #
+    #     model_date = model_loc.split("/")[8]
+    #
+    #     print model_loc
+    #
+    #     pickle_to_file = pickle.load(open(model_loc, "rb"))
+    #
+    #     # best_estimator = pickle_to_file['SVC'].best_estimator_
+    #
+    #     #print('Your symbol is:', ticker, 'and the model date is:' ,model_date)
+    #
+    #     # get all the dates of the labels from the labels path - this may be a bit redundant in the end
+    #
+    #     labels_dates = sorted([os.listdir(symbol_labels_path)[idx].split(".")[0]
+    #                            for idx, _ in enumerate(os.listdir(symbol_labels_path))])
+    #     print labels_dates
+    #     #need the ability to just keep the +N days ahead of the model. or refit model every 10 days
+    #
+    # # #     # this is the location of the out of sample features
+    # # #
+    # #     oos_features_path = os.path.join(symbol_features_path, model_date)
     #     oos_dates_list = sorted([oos_date.split("_")[5] for oos_date in
     #                              sorted(os.listdir(oos_features_path))])  # list of oos features
     # #
