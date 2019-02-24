@@ -227,7 +227,8 @@ if __name__ == '__main__':
     model_save_loc = os.path.join(data_only_drive, 'Data', 'features_models', 'models')
     # from the main directory select all the symbols that are finishing in .L for FTSE
     symbols_ftse = [s for s in os.listdir(features) if s.endswith('.L')]
-    good_symbols = ['BATS.L','MAB.L','WPP.L']
+    good_symbols = ['DMGOa.L']
+
     # 'CPI.L', 'ULVR.L',  'ECM.L', 'AV.L', 'GKN.L', 'TSCO.L',  'ITV.L',  'BARC.L', 'CPG.L', 'AAL.L', \
     # 'LGEN.L', 'LAND.L', 'VOD.L', 'HSBA.L', 'RSA.L', 'RDSa.L', 'PRU.L', 'III.L', 'REL.L', 'CNA.L', 'SHP.L', 'MKS.L', 'DMGOa.L', 'RR.L', 'DGE.L', 'BATS.L','MAB.L',]
     # 'CPI.L', 'ULVR.L',  'ECM.L', 'AV.L', 'GKN.L', 'TSCO.L',  'ITV.L',  'BARC.L', 'CPG.L', 'AAL.L', \
