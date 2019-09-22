@@ -163,7 +163,7 @@ if __name__ == '__main__' :
     #
     #     # # # Iterate through dates, load the stored hmm, make the features_engine point at that, and use the labels
     #     # # # already added as columns to the data data frames
-        now = dt.datetime.now()
+        now = dt.datetime.now()  # day we use to generate features
 
         for date, date_data in data.iteritems():
             new_path = os.path.join(ticker_features_path, str(date)) #create a new path inside features for each date
