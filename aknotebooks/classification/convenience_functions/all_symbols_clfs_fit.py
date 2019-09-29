@@ -251,8 +251,7 @@ if __name__ == '__main__':
     symbol_model_dates = dict()
 
     for symbol in good_symbols:  # for all symbols
-        datacls = DataLoader(path_main=data_dir, ticker=symbol)  # test symbol -create class
-        symbol_compute_date = datacls.compute_date
+        datacls = DataLoader(path_main=data_dir, ticker=symbol)  # testpcd
         print symbol
         symbol_labels_path = os.path.join(labels_path, symbol, 'NON_DIRECTIONAL')
         symbol_features_path = os.path.join(features_path, symbol, 'MODEL_BASED')
