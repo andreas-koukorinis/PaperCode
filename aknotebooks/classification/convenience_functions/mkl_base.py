@@ -38,18 +38,16 @@ folderIdx = 0  # pick a folder- essentially where all the financial data we will
 finalLocation= "/".join((dataOnlyDrive,folderList[folderIdx]))
 symbols = [s for s in os.listdir(finalLocation) if s.endswith('.L')]  #keep a list of the symbols
 
-##picking up a specific feature
+##picking up a specific symbol
 symbolIdx = 1 #pick one of the symbols
 #symbols[symbolIdx] -->output :PRU.L
 print(symbols[symbolIdx])
-# do a join to get the location
-symbolLocation = "/".join((finalLocation,symbols[symbolIdx]))
+symbolLocation = "/".join((finalLocation,symbols[symbolIdx])) # do a join to get the location
 
 # get he features now
 symbolFeaturesLocation = "/".join((symbolLocation,'MODEL_BASED')) # where all the HMM output is
-print('This will be deleted, but I am picking this symobl and reading from this folder:')
-print(symbolFeaturesLocation) # <-- all the HMM model output is here, for each model there is a Date Folder and then OOS files
-
+# print('This will be deleted, but I am picking this symobl and reading from this folder:')
+# print(symbolFeaturesLocation) # <-- all the HMM model output is here, for each model there is a Date Folder and then OOS files
 
 symbolFeaturesDatesList = os.listdir(symbolFeaturesLocation)
 # list of all the MODEL dates we have generated features files for. each #
@@ -64,8 +62,8 @@ symbolLabelsLocation = "/".join((finalLocation, 'Labels',symbols[symbolIdx],'NON
 #list of all the label dates
 
 symbolLabelsDates =[dateFile.split(".")[0] for dateFile in os.listdir(symbolLabelsLocation)]
-
-# Output symbolLabelsDates --> ['20170704', '20180226', '20180208',...] all we are doing is going for this
+print('symbolLabelsDates', symbolLabelsDates)
+                    # Output symbolLabelsDates --> ['20170704', '20180226', '20180208',...] all we are doing is going for this
 
 ##now lets go down into each HMM-model date, and pick all the forward futures (out of sample)
 featrsIdx = 3 #symbol-hmm-model-date index
@@ -75,7 +73,7 @@ featrsIdx = 3 #symbol-hmm-model-date index
 symbolOneFeaturesDate = "/".join((symbolFeaturesLocation, symbolFeaturesDatesList[featrsIdx]))
 # output looks like this: /media/ak/DataOnly/FinDataReal/PRU.L/MODEL_BASED/20170710
 
-symbolEachModelFeaturesDates=[file.split("_")[5] for file in os.listdir(symbolOneFeaturesDate )]
+symbolEachModelFeaturesDates=[file.split("_")[5] for file in os.listdir(symbolOneFeaturesDate)]
 
 print("you are picking this HMM model date:",symbolFeaturesDatesList[featrsIdx])
 
