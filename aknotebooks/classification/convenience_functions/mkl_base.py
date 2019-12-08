@@ -24,6 +24,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from MKLpy.metrics import pairwise
 from MKLpy.preprocessing import normalization, rescale_01
+
 from sklearn.metrics.pairwise import rbf_kernel
 #MKL algorithms
 from MKLpy.algorithms import AverageMKL, EasyMKL, KOMD#KOMD is not a MKL algorithm but a simple kernel machine like the SVM
@@ -41,113 +42,135 @@ symbols = [s for s in os.listdir(finalLocation) if s.endswith('.L')]  #keep a li
 ##picking up a specific symbol
 symbolIdx = 1 #pick one of the symbols
 #symbols[symbolIdx] -->output :PRU.L
+
 print(symbols[symbolIdx])
+
 symbolLocation = "/".join((finalLocation,symbols[symbolIdx])) # do a join to get the location
 
 # get he features now
-symbolFeaturesLocation = "/".join((symbolLocation,'MODEL_BASED')) # where all the HMM output is
-# print('This will be deleted, but I am picking this symobl and reading from this folder:')
-# print(symbolFeaturesLocation) # <-- all the HMM model output is here, for each model there is a Date Folder and then OOS files
+symbolFeaturesLocation = "/".join((symbolLocation,'MODEL_BASED'))
 
-symbolFeaturesDatesList = os.listdir(symbolFeaturesLocation)
-# list of all the MODEL dates we have generated features files for. each #
+#  where all the HMM output is -but I am picking this symbol and reading from this folder:')
+
+symbolHMMDatesList = os.listdir(symbolFeaturesLocation)
+
+# list of all the HMM MODEL dates we have generated features files for. each #
 # each of these dates in symbolFeaturesDates corresponds to a list of dates
 # (symbolFeaturesDatesList = '20170829', '20170710', '20170801', ... ]
 # now lets move to labels ...pick the location of the labels and make a list of all the available labels #
 
-#location of labels : /media/ak/DataOnly/FinDataReal/Labels/[Symbol :PRU.L]/NON_DIRECTIONAL
+# location of labels : /media/ak/DataOnly/FinDataReal/Labels/[Symbol :PRU.L]/NON_DIRECTIONAL
 
 symbolLabelsLocation = "/".join((finalLocation, 'Labels',symbols[symbolIdx],'NON_DIRECTIONAL'))
 
 #list of all the label dates
 
 symbolLabelsDates =[dateFile.split(".")[0] for dateFile in os.listdir(symbolLabelsLocation)]
+
 print('symbolLabelsDates', symbolLabelsDates)
                     # Output symbolLabelsDates --> ['20170704', '20180226', '20180208',...] all we are doing is going for this
 
-##now lets go down into each HMM-model date, and pick all the forward futures (out of sample)
-featrsIdx = 3 #symbol-hmm-model-date index
+# now lets go down into each HMM-model date, and pick all the forward futures (out of sample)
 
-#this symbolFeaturesDatesList[featrsIdx] will give you a date: 20170710 =which contains all the HMM induced featureb
+hmmFeatureLocations = {}  # symbol-hmm-model-date index --> this is the indexation in symbolFeaturesDatesList
+commonDatesDict = {}  # this is a struct that will contain for each HMM date, the common labels/features- this should be used for training and testing
+createDate = []  # place holder for the hash key of when the features got created
+commonFeaturesLocs = {}
+commonLabelsLocs = {}
+commonLocs = {}
 
-symbolOneFeaturesDate = "/".join((symbolFeaturesLocation, symbolFeaturesDatesList[featrsIdx]))
-# output looks like this: /media/ak/DataOnly/FinDataReal/PRU.L/MODEL_BASED/20170710
+# this symbolFeaturesDatesList[featrsIdx] will give you a date: 20170710 =which contains all the HMM induced featureb
 
-symbolEachModelFeaturesDates=[file.split("_")[5] for file in os.listdir(symbolOneFeaturesDate)]
+for hmmDateIdx, hmmDate in enumerate(np.sort(symbolHMMDatesList)):
 
-print("you are picking this HMM model date:",symbolFeaturesDatesList[featrsIdx])
+    symbolModelFeaturesDate = "/".join((symbolFeaturesLocation, symbolHMMDatesList[hmmDateIdx]))
+    createDate = os.listdir(symbolModelFeaturesDate)[2].split("_")[7]  # stupid hack
 
-# method to find the list of dates (intersection) that we have both HMM-model-features and labels
-# symbolEachModelFeaturesDates # set of OutOfSample Dates produced by each HMM Model
-# symbolLabelsDates # set of all the Labels
-# we want to match OOS Dates with Labels
-# for these dates we have features and we have labels- so we can fit and predict! this produces a list of [date1, date 2, ...]
-commonDates =list(set(symbolEachModelFeaturesDates ) & set(symbolLabelsDates))
-#Now we need to reconstruct the dates for the fitting
-commonIdx =0 #common dates index
-# the cache of the file includes the date it was saved, the first date is the Common Date and the next date is the "creation date"
-createDate = os.listdir(symbolOneFeaturesDate)[2].split("_")[7] #stupid hack
-## now we reconstruct the file but with arbitrary new date ##
-commonDatesFeatureDateFile = \
-"".join((symbols[1],"_3_states_features_date:_",commonDates[commonIdx], \
-         "_now:_",createDate,"_.pickle"))
+    # output looks like this: /media/ak/DataOnly/FinDataReal/PRU.L/MODEL_BASED/20170710
+    symbolEachModelFeaturesDates = [file.split("_")[5] for file in os.listdir(symbolModelFeaturesDate)]
+    # output is a list of dates
 
-## now lets load up the pickle and the labels ##
-testIdx= 3
-featuresIdxDirFileLoc = "/".join((symbolFeaturesLocation, symbolFeaturesDatesList[testIdx] \
-                               ,  commonDatesFeatureDateFile))
-featuresTupleFile = pickle.load(open(featuresIdxDirFileLoc,"rb"), encoding='iso-8859-1')
+    commonDates = list(
+        set(symbolEachModelFeaturesDates) & set(symbolLabelsDates))  # this is a list of features and labels dates
 
-dfFeatures = pd.concat([featuresTupleFile[0], featuresTupleFile[1],\
-                                                 featuresTupleFile[2], featuresTupleFile[3]], axis=1, sort=False).fillna(0)
 
-labelsCommonDateFile = ".".join((commonDates[commonIdx],'csv'))
+for idxKey, commonDate in enumerate(commonLocs.keys()):
 
-labelsCommonFileLoc = "/".join((symbolLabelsLocation, labelsCommonDateFile))
-labelsDf=pd.read_csv(labelsCommonFileLoc)
-#take the labels out
-labels =labelsDf['label_PrMov__window_5__thres_arbitrary__0.1']
+    print("create Date:###", createDate)
+    print("common Date:-----", commonDate)
+    labelsCommonDateFile = ".".join((commonDate, 'csv'))
+    labelsCommonFileLoc = "/".join((symbolLabelsLocation, labelsCommonDateFile))
+    labelsDf = pd.read_csv(labelsCommonFileLoc)
+    comnDateFeatureLocMaster: str = ("/".join((symbolFeaturesLocation, hmmDate)))
+    commonDatesFeatureFile = "".join((symbols[1], '_3_states_features_date:_', commonDate, "_now:_", createDate, "_.pickle"))
+    FeatureFileLoc = "/".join((comnDateFeatureLocMaster, commonDatesFeatureFile))
 
-labelsShift = labels.isna().sum() # going to use this for "allignment of features and labels"
-### put labels and features together before you dropnans ###
+    commonLocs[commonDate] = [FeatureFileLoc, labelsCommonFileLoc]
+    print(commonLocs[commonDate])
 
-dfXY = pd.concat([dfFeatures, labels], axis=1, sort='False').dropna()
-labelName = str(dfXY.columns[dfXY.columns.str.contains(pat='label')].values[0])
-## get working now on features and labels for MKL ##
-dfX = dfXY.drop(columns=[ labelName])
-print("Shape of dfX..",dfX.shape[0])
-dfX.columns.values
+    for idxKey in range(13):
+        featuresIdxDirFileLoc = commonLocs[keys[idxKey]][0]
+        labelsIdxDirFileLoc = commonLocs[keys[idxKey]][1]
 
-X =StandardScaler().fit_transform(dfX)
-y = dfXY[dfXY.columns[dfXY.columns.str.contains(pat='label')]].iloc[:, 0]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+        featuresTupleFile = pickle.load(open(featuresIdxDirFileLoc, "rb"), encoding='latin1')
+        labelsDf = pd.read_csv(labelsIdxDirFileLoc)
 
-#preprocess data
-print ('preprocessing data...', end='')
-X = normalization(rescale_01(np.array(dfX)))
-Xtr, Xte, Ytr, Yte = train_test_split(X, y, test_size=.55, random_state=42)
-print(X.shape, 'done')
+        dfFeatures = pd.concat([featuresTupleFile[0], featuresTupleFile[1], \
+                                    featuresTupleFile[2], featuresTupleFile[3]], axis=1, sort=False).fillna(0)
+        # take the labels out
+        labels = labelsDf['label_PrMov__window_5__thres_arbitrary__0.1']
+        print('preprocessing data...', end='')
+        dfXY = pd.concat([dfFeatures, labels], axis=1, sort='False').dropna()
+        labelName = str(dfXY.columns[dfXY.columns.str.contains(pat='label')].values[0])
+        dfX = dfXY.drop(columns=[labelName])
+        print("Shape of dfX..", dfX.shape[0])
+        arrX = np.array(dfX)
+        X = rescale_01(arrX)  # feature scaling in [0,1]
+        X = normalization(rescale_01(arrX))
+        print(X.shape, 'done')
+        y = dfXY[dfXY.columns[dfXY.columns.str.contains(pat='label')]].iloc[:, 0]
+        print("Shape of y..", y.shape)
+        Xtr, Xte, Ytr, Yte = train_test_split(X, y, test_size=.55, random_state=42)
+        # compute homogeneous polynomial kernels with degrees 0,1,2,...,10.
+        print('computing Homogeneous Polynomial Kernels...', end='')
+        KLtr = [pairwise.homogeneous_polynomial_kernel(Xtr, degree=d) for d in range(4)]
+        KLte = [pairwise.homogeneous_polynomial_kernel(Xte, Xtr, degree=d) for d in range(4)]
+        from sklearn.metrics.pairwise import rbf_kernel
 
-#compute homogeneous polynomial kernels with degrees 0,1,2,...,10.
-print('computing Homogeneous Polynomial Kernels...', end='')
-KLtr = [pairwise.homogeneous_polynomial_kernel(Xtr, degree=d) for d in range(4)]
-KLte = [pairwise.homogeneous_polynomial_kernel(Xte,Xtr, degree=d) for d in range(4)]
-gamma_range = np.logspace(-9, 3, 13)
-ker_list = [rbf_kernel(Xtr, gamma=g) for g in gamma_range]
-print ('done')
-# MKL algorithms #
-print ('training AverageMKL...', end='')
-clf = AverageMKL().fit(KLtr,Ytr)  # a wrapper for averaging kernels
-print ('done')
-print(clf.weights)  # print the weights of the combination of base kernels
-K_average = clf.ker_matrix  # the combined kernel matrix
-clfRBF = clf = AverageMKL().fit(ker_list,Ytr) #a wrapper for averaging kernels
-K_average_rbf = clfRBF.ker_matrix
+        gamma_range = np.logspace(-9, 3, 13)
+        ker_list = [rbf_kernel(Xtr, gamma=g) for g in gamma_range]
+        print('RBF Kernels done')
+            ### test set work ###
+        KLtest = [pairwise.homogeneous_polynomial_kernel(TestX, Xtr, degree=d) for d in range(4)]
 
-# training MKL #
-print ('training EasyMKL...', end='')
-clf = EasyMKL(lam=0.1).fit(KLtr,Ytr)#combining kernels with the EasyMKL algorithm
-clfEasyRBF = EasyMKL(lam=0.1).fit(ker_list,Ytr)
-#lam is a hyper-parameter in [0,1]
-print ('done')
-print (clf.weights)
+        gamma_range = np.logspace(-9, 3, 13)
+        ker_list = [rbf_kernel(Xtr, gamma=g) for g in gamma_range]
+        print('training AverageMKL...', end='')
+        clf = AverageMKL().fit(KLtr, Ytr)  # a wrapper for averaging kernels
+        print('done')
+        print(clf.weights)  # print the weights of the combination of base kernels
+        print('training EasyMKL...', end='')
+        clfEasy = EasyMKL(lam=0.1).fit(KLtr, Ytr)  # combining kernels with the EasyMKL algorithm
+        clfRBF = EasyMKL(lam=0.1).fit(ker_list, Ytr)
+        # lam is a hyper-parameter in [0,1]
+        print('done')
+        print(clfEasy.weights)
+        print('Linear')
+        y_pred = clf.predict(KLte)  # predictions
+        y_score = clf.decision_function(KLte)  # rank
+        accuracy = accuracy_score(Yte, y_pred)
+        roc_auc = roc_auc_score(Yte, y_score)
+        print('Accuracy score: %.3f, roc AUC score: %.3f' % (accuracy, roc_auc))
+        print('MKL-Linear')
+        y_predTest = clfEasy.predict(KLte)  # predictions
+        y_scoreTest = clfEasy.decision_function(KLte)  # rank
+        accuracy = accuracy_score(Yte, y_predTest)
+        roc_auc = roc_auc_score(Yte, y_scoreTest)
+        print('Accuracy score: %.3f, roc AUC score: %.3f' % (accuracy, roc_auc))
+        print('MKL-RBF')
+        y_predRBF = clfRBF.predict(KLte)  # predictions
+        y_scoreRBF = clfRBF.decision_function(KLte)  # rank
+        accuracyRBF = accuracy_score(Yte, y_predRBF)
+        roc_aucRBF = roc_auc_score(Yte, y_scoreRBF)
+        print('Accuracy score: %.3f, roc AUC score: %.3f' % (accuracyRBF, roc_aucRBF))
+
