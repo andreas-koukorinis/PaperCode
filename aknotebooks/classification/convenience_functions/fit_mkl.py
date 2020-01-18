@@ -36,7 +36,7 @@ def featureCreation(idxKey, locDict):
     return X, y
 
 
-symbolIdx = 2  # pick one of the symbols
+symbolIdx = 1  # pick one of the symbols
 
 # do a join to get the location
 # symbolLocation = "/".join((finalLocation, symbols[symbolIdx]))
@@ -55,10 +55,10 @@ dataList = [s for s in os.listdir(selectionLoc) if s.startswith('Dat')]
 MKLExpPath = os.path.join(os.path.join(hardDrivesLoc, selection, dataList[1]), 'MKL_Experiments')
 MKLSymbolPath = os.path.join(MKLExpPath, symbols[symbolIdx])
 MKLSymbolKernelsPath = "/".join((MKLSymbolPath, 'Kernels'))
-
+KernelsLocations = {}
 if __name__ == '__main__':
     SymbolCommonPaths = mkl_base.open_pickle_file(MKLSymbolPath, 'LocDictsListCorrect.pkl')
-    uniqueTrainingKeys = np.unique([i[1] for i in SymbolCommonPaths])
+    uniqueTrainingKeys = [i[1] for i in SymbolCommonPaths]
 
     for trainingKey, keyDate in enumerate(uniqueTrainingKeys):
         print(trainingKey, keyDate)
@@ -73,8 +73,11 @@ if __name__ == '__main__':
             print('training EasyMKL...for polynomials and RBF', end='')
             Kernels = [KLsimple, KLrbf]
             pkl.dump(Kernels, open("/".join((MKLSymbolKernelsPath, kernelFileName)), "wb"))
+            KernelsLocations[trainingKey, keyDate] = "/".join((MKLSymbolKernelsPath, kernelFileName))
             print('------')
             print('finished kernels')
         else:
             print('Shapes dont match.')
             continue
+        pkl.dump(KernelsLocations,
+                 open("/".join((MKLSymbolPath, "kernelLocations.pkl")), "wb"))

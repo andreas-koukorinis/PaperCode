@@ -92,7 +92,8 @@ finalLocation = "/".join((dataOnlyDrive, folderList[folderIdx]))  # /media/ak/Da
 symbols = [s for s in os.listdir(finalLocation) if s.endswith('.L')]  # keep a list of the symbols
 
 # picking up a specific symbol
-symbolIdx = 4
+symbolIdx = 6
+
 # pick one of the symbols
 # symbols[symbolIdx] -->output :PRU.L
 # # do a join to get the location
