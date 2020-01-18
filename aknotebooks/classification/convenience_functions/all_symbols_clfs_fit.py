@@ -263,7 +263,7 @@ if __name__ == '__main__':
                                                   hmm_models_dates_list[hmm_idx])  # location list of feature files
             oos_dates_list = sorted([oos_date.split("_")[5] for oos_date in
                                      sorted(os.listdir(oos_features_date_path))])  # list of oos features
-            oos_labels_features = [(os.path.join(symbol_labels_path, oos_date + '.csv'),\
+            oos_labels_features = [(os.path.join(symbol_labels_path, cd  + '.csv'),\
                                     os.path.join(oos_features_date_path, \
                                                  "_".join((symbol, '3', 'states_features_date:', oos_date, 'now:',
                                                            symbol_compute_date, '.pickle')))) \
