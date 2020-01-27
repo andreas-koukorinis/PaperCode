@@ -51,11 +51,16 @@ class CreateElements(object):
         lookAheadKeys = sorted(i for i in keys if i > keys[self.idxKey])
         return dict((k, self.commonLocs[k]) for k in lookAheadKeys)
 
+
+
     def featureCreation(self):
-        """ gives out clean features and labels for a given location directory and a idxKey """
-        keys = list(self.commonLocs.keys())
-        featuresIdxDirFileLoc = self.commonLocs[keys[self.idxKey]][0]
-        labelsIdxDirFileLoc = self.commonLocs[keys[self.idxKey]][1]
+        """ gives out clean features and labels for a given locDict and a idxKey """
+        featuresIdxDirFileLoc = self.commonLocs[self.idxKey][0]
+        labelsIdxDirFileLoc = self.commonLocs[self.idxKey][1]
+        ''' read the features file'''
+        featuresTupleFile = pkl.load(open(featuresIdxDirFileLoc, "rb"), encoding='latin1')
+        dfFeatures = pd.concat([featuresTupleFile[0], featuresTupleFile[1], \
+                                featuresTupleFile[2], featuresTupleFile[3]], axis=1, sort=False).fillna(0)
         ''' read the features file'''
         featuresTupleFile = pickle.load(open(featuresIdxDirFileLoc, "rb"), encoding='latin1')
         dfFeatures = pd.concat([featuresTupleFile[0], featuresTupleFile[1], \
@@ -149,7 +154,7 @@ LocDictsList = []
 def getLocationsList():
     for hmmDateIdx, hmmDate in enumerate(sorted(symbolHMMDatesList)):
         symbolModelFeaturesDate = os.path.join(symbolFeaturesLocation, symbolHMMDatesList[hmmDateIdx])
-        create_date = os.listdir(symbolModelFeaturesDate)[0].split("_")[7]  # stupid hack
+        create_date = '20181229'  # dates: 20190109, 20180825 etc
         # output looks like this: /media/ak/DataOnly/FinDataReal/PRU.L/MODEL_BASED/20170710
         symbolEachModelFeaturesDates[symbolHMMDatesList[hmmDateIdx]] = [file.split("_")[5] for file in
                                                                         os.listdir(symbolModelFeaturesDate)]
@@ -204,18 +209,4 @@ def pickleLocsList(loc_dicts_list):
 
 # dump it all in the same location# #
 if __name__ == '__main__':
-    # getLocationsList()
-    print(symbols)
-    print("Picked Symbol:", symbols[symbolIdx])
-    print(symbolLocation)
-    print(symbolFeaturesLocation)
-    checkDir(symbolFeaturesLocation)
-    print(selectionLoc)
-    print(DataLoc)
-    checkDir(DataLoc)
-    print(MKLExpPath)
-    checkDir(MKLExpPath)
-    print(MKLSymbolPath)
-    checkDir(MKLSymbolPath)
-    getLocationsList()
-
+    pass
