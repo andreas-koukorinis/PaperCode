@@ -36,27 +36,28 @@ def featureCreation(idxKey, locDict):
     return X, y
 
 
-symbolIdx = 1  # pick one of the symbols
 
-# do a join to get the location
-# symbolLocation = "/".join((finalLocation, symbols[symbolIdx]))
-# # get the features now
-symbolFeaturesLocation = "/".join(
-    ("/".join((finalLocation, symbols[symbolIdx])), 'MODEL_BASED'))  # where all the HMM output is
-
-locIdx = 1  # '''WorkDrive'''
-
-selection = os.listdir(hardDrivesLoc)[locIdx]
-
-selectionLoc = os.path.join(hardDrivesLoc, selection)
-# ''' location of WorkDrive'''
-dataList = [s for s in os.listdir(selectionLoc) if s.startswith('Dat')]
-# path = 'MKL_Experiments'
-MKLExpPath = os.path.join(os.path.join(hardDrivesLoc, selection, dataList[1]), 'MKL_Experiments')
-MKLSymbolPath = os.path.join(MKLExpPath, symbols[symbolIdx])
-MKLSymbolKernelsPath = "/".join((MKLSymbolPath, 'Kernels'))
-KernelsLocations = {}
 if __name__ == '__main__':
+    symbolIdx = 1  # pick one of the symbols
+
+    # do a join to get the location
+    # symbolLocation = "/".join((finalLocation, symbols[symbolIdx]))
+    # # get the features now
+    symbolFeaturesLocation = "/".join(
+        ("/".join((finalLocation, symbols[symbolIdx])), 'MODEL_BASED'))  # where all the HMM output is
+
+    locIdx = 1  # '''WorkDrive'''
+
+    selection = os.listdir(hardDrivesLoc)[locIdx]
+
+    selectionLoc = os.path.join(hardDrivesLoc, selection)
+    # ''' location of WorkDrive'''
+    dataList = [s for s in os.listdir(selectionLoc) if s.startswith('Dat')]
+    # path = 'MKL_Experiments'
+    MKLExpPath = os.path.join(os.path.join(hardDrivesLoc, selection, dataList[1]), 'MKL_Experiments')
+    MKLSymbolPath = os.path.join(MKLExpPath, symbols[symbolIdx])
+    MKLSymbolKernelsPath = "/".join((MKLSymbolPath, 'Kernels'))
+    KernelsLocations = {}
     SymbolCommonPaths = mkl_base.open_pickle_file(MKLSymbolPath, 'LocDictsListCorrect.pkl')
     uniqueTrainingKeys = [i[1] for i in SymbolCommonPaths]
 
