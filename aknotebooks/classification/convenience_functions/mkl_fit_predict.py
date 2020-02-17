@@ -139,6 +139,57 @@ if __name__ == '__main__':
 
     symbolLabelsLocation = "/".join((finalLocation, 'Labels', symbols[symbolIdx], 'NON_DIRECTIONAL'))
 
+    # now lets go down into each HMM-model date, and pick all the forward futures (out of sample)
+    hmmFeatureLocations = {}  # symbol-hmm-model-date index --> this is the indexation in symbolFeaturesDatesList
+    commonDatesDict = {}  # this is a struct that will contain for each HMM date, the common labels/features- this should
+    # be used for training and testing
+    createDate = []  # place holder for the hash key of when the features got created
+    symbolEachModelFeaturesDates = {}
+    HMMModelFeaturesLabelsCommon = {}  # location dictionary with 2 keys: HMM Date and Common Date
+    commonDates = []
+
+    LocDictsList = []
+
+    for hmmDateIdx, hmmDate in enumerate(sorted(symbolHMMDatesList)):
+        symbolModelFeaturesDate = os.path.join(symbolFeaturesLocation, symbolHMMDatesList[hmmDateIdx])
+        create_date = os.listdir(symbolModelFeaturesDate)[3].split("_")[-2]
+        # output looks like this: /media/ak/DataOnly/FinDataReal/PRU.L/MODEL_BASED/20170710
+        symbolEachModelFeaturesDates[symbolHMMDatesList[hmmDateIdx]] = [file.split("_")[5] for file in
+                                                                        os.listdir(symbolModelFeaturesDate)]
+        # output is a dictionary where the keys are the HMM models dates and the values a list of dates - for each HMM
+        # date we have a list of features
+        for keyHMMDate in sorted(list(symbolEachModelFeaturesDates.keys())):  # for each of the HMM model dates
+            print(keyHMMDate)
+            common_dates = list(set(symbolEachModelFeaturesDates[keyHMMDate]) & set(symbolLabelsDates))
+            # take the list of feature dates (conditional on HMM model date) + the list of labels -intersection!
+
+            '''we now produce a dict for each HMM model, where each value is a list of common dates and we are key-ed by 
+            the HMM Date '''
+            commonDatesDict[keyHMMDate] = common_dates
+            for commonDate in common_dates:
+                '''iterate through all the common dates and figure out the location of each file for labels and 
+                features '''
+                labelsCommonFileLoc = "/".join((symbolLabelsLocation, ".".join((commonDate, 'csv'))))
+                #             comnDateFeatureLocMaster = os.path.join((symbolModelFeaturesDate, commonDate))
+                commonDatesFeatureFile = "".join(
+                    (symbols[symbolIdx], '_3_states_features_date:_', commonDate, "_now:_", create_date, "_.pickle"))
+                FeatureFileLoc = os.path.join(symbolModelFeaturesDate, commonDatesFeatureFile)
+                checkDir(FeatureFileLoc)
+                checkDir(labelsCommonFileLoc)
+                conditions = [os.path.exists(FeatureFileLoc), os.path.exists(labelsCommonFileLoc)]
+                print(conditions)
+                if all(conditions):
+                    print('all good on Date:', commonDate)
+                    HMMModelFeaturesLabelsCommon[keyHMMDate, commonDate] = [FeatureFileLoc, labelsCommonFileLoc]
+                    pkl.dump(HMMModelFeaturesLabelsCommon,
+                             open("/".join((MKLSymbolPath, "LocDictsListCorrect.pkl")), "wb"))
+
+                else:
+                    print('problem on date: ', commonDate)
+                    continue
+                pkl.dump(commonDatesDict,
+                         open("/".join((MKLSymbolPath, "CommonLocationsDicts.pkl")), "wb"))
+
     count_i = 0
 
     for j in range(0, 5):

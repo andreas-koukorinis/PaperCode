@@ -105,7 +105,7 @@ def storeCleanLOB( cleanLOB, targetFolder,symbolID, symbolsFolder= bmrg_folders 
 
 
 if __name__ == '__main__':
-    symbolID=7
+    symbolID=3
 
     for fileIDx in range(0,200):
         fileID=fileIDx
