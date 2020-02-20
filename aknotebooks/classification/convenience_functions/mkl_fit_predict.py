@@ -1,55 +1,48 @@
+from MKLpy.preprocessing import normalization, rescale_01
+from sklearn.metrics.pairwise import rbf_kernel as RBF
+from sklearn.metrics import average_precision_score, recall_score
 import os
 import pandas as pd
 import numpy as np
 import pickle as pkl
-from sklearn.model_selection import train_test_split
-from sklearn.metrics.pairwise import rbf_kernel
-from sklearn.svm import SVC
+from MKLpy.metrics.pairwise.misc import homogeneous_polynomial_kernel as HPK_kernel
 
 np.seterr(divide='ignore', invalid='ignore')
+from sklearn.metrics.pairwise import rbf_kernel
+from sklearn.multiclass import OneVsRestClassifier  # support from multiclass
+
+import time
+from sklearn.metrics import accuracy_score, roc_auc_score
+from collections import defaultdict
+import matplotlib.pyplot as plt
 from MKLpy.preprocessing import normalization, rescale_01
 from MKLpy.model_selection import cross_val_score, cross_val_predict
 import pickle as pkl
 ###
+
+
 from MKLpy.metrics import pairwise
 from MKLpy.algorithms import AverageMKL, EasyMKL, \
     KOMD  # KOMD is not a MKL algorithm but a simple kernel machine like the SVM
 # evaluate the solution
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import f1_score
 
-np.seterr(divide='ignore', invalid='ignore')
+import psutil
+import gc
+####
 
-from MKLpy.preprocessing import normalization, rescale_01
-from sklearn.metrics.pairwise import rbf_kernel as RBF
-import os
-import pandas as pd
-import numpy as np
-import pickle as pkl
-
-from MKLpy.metrics.pairwise.misc import homogeneous_polynomial_kernel as HPK_kernel
-from MKLpy.metrics import pairwise
-
-import mkl_base as mkl_base
-from mkl_base import hardDrivesLoc, dataOnlyDrive, folderList, symbols, \
-    dataList, symbolFeaturesLocation, selection
-
-# from aknotebooks.classification.convenience_functions.fit_mkl import featureCreation
-
-'''  Drives / Locations  '''
-
-hardDrivesLoc = '/media/ak/'
-dataOnlyDrive = '/media/ak/DataOnly'  # external date only drive
-ext_drive_loc = '/media/ak/My Passport/Experiment Data/'
-#  input drive
-inputDrive = hardDrivesLoc
-
+def logmemoryusage(msg):
+    process = psutil.Process(os.getpid())
+    print('Memory usage at %s is %smb.'%(msg,process.memory_info().rss/1000/1000))
 
 def featureCreation(idxKey, locDict):
     """ gives out clean features and labels for a given locDict and a idxKey """
     keys = list(locDict.keys())
     featuresIdxDirFileLoc = locDict[keys[idxKey]][0]
     labelsIdxDirFileLoc = locDict[keys[idxKey]][1]
+    dataDate = keys[idxKey]
     ''' read the features file'''
     featuresTupleFile = pkl.load(open(featuresIdxDirFileLoc, "rb"), encoding='latin1')
     dfFeatures = pd.concat([featuresTupleFile[0], featuresTupleFile[1], \
@@ -69,185 +62,180 @@ def featureCreation(idxKey, locDict):
     X = normalization(rescale_01(arrX))
     y = dfXY[dfXY.columns[dfXY.columns.str.contains(pat='label')]].iloc[:, 0]
     ''' returns features, labels'''
-    return X, y
+    return X, y, dataDate
 
 
-def forwardDates(idxKey, commonLocs):
-    """ return all the forward looking dates for each idxKey we use for training"""
-    keys = list(commonLocs.keys())  # this produces a list with 2 keys -first HMM Symbol Date and common Date
-    lookAheadKeys = sorted(i for i in keys if i > keys[idxKey])
-    return dict((k, commonLocs[k]) for k in lookAheadKeys)
+
+''' 
+Paths 
+'''
+hardDrivesLoc = '/media/ak/'
+dataOnlyDrive = '/media/ak/DataOnly'  # external date only drive
+ext_drive_loc = '/media/ak/My Passport/Experiment Data/'
+data_dir = os.getenv('FINANCE_DATA')  # internal folder with finance data
+#  input drive
+inputDrive = hardDrivesLoc
 
 
+####
+
+average_kernel_results = {
+    'tpr': [],
+    'fpr': [],
+    'auc': [],
+    'train_date': [],
+    'data_date': [],
+    'test_recall': [],
+    'train_recall': [],
+    'test_accuracy': [],
+    'train_accuracy': [],
+    'Average precision-recall score': [],
+    'thresholds': [],
+    'f1_score': [],
+}
+MKL_results = {
+    'tpr': [],
+    'fpr': [],
+    'auc': [],
+    'train_date': [],
+    'data_date': [],
+    'test_recall': [],
+    'train_recall': [],
+    'test_accuracy': [],
+    'train_accuracy': [],
+    'Average precision-recall score': [],
+    'thresholds': [],
+    'f1_score': [],
+    'weights': [],
+}
 if __name__ == '__main__':
-
     ''' Inputs '''
-
     folderIdx = 0
-
     folderList = [s for s in os.listdir(dataOnlyDrive) if s.startswith('Dat') or s.startswith('Fin')]
-    finalLocation = "/".join((dataOnlyDrive, folderList[folderIdx]))  # /media/ak/DataOnly/FinDataReal
+    finalLocation = "/".join((dataOnlyDrive, folderList[folderIdx]))
     symbols = [s for s in os.listdir(finalLocation) if s.endswith('.L')]  # keep a list of the symbols
-
+    print(symbols)
     # picking up a specific symbol
-    symbolIdx = 6
-
-    # pick one of the symbols
+    symbolIdx = 0  # pick one of the symbols
+    symbol = symbols[symbolIdx]
+    print(symbol)
     # symbols[symbolIdx] -->output :PRU.L
-    # # do a join to get the location
-    print(symbols[symbolIdx])
+    # do a join to get the location
     symbolLocation = "/".join((finalLocation, symbols[symbolIdx]))
     # # get the features now
     symbolFeaturesLocation = "/".join((symbolLocation, 'MODEL_BASED'))  # where all the HMM output is
-    # symbolLocation = "/".join((finalLocation, symbols[symbolIdx]))
-    # # # get the features now
-    # symbolFeaturesLocation = "/".join(("/".join(("/".join((dataOnlyDrive, folderList[0])), symbols[symbolIdx])),
-    #                                    'MODEL_BASED'))  # where all the HMM output is
+
     # print(symbolFeaturesLocation) # <-- all the HMM model output is here, for each model there is a Date Folder and
     # then OOS files
     locIdx = 1  # '''WorkDrive'''
 
     selection = os.listdir(inputDrive)[locIdx]
 
-    selectionLoc = os.path.join(inputDrive, selection)  # /media/ak/WorkDrive
+    selectionLoc = os.path.join(inputDrive, selection)
     # ''' location of WorkDrive'''
     dataList = [s for s in os.listdir(selectionLoc) if s.startswith('Dat')]
     DataLoc = os.path.join(hardDrivesLoc, selection, dataList[1])
     path = 'MKL_Experiments'
     MKLExpPath = os.path.join(DataLoc, path)
     MKLSymbolPath = os.path.join(MKLExpPath, symbols[symbolIdx])
-    # os.makedirs(os.path.join(DataLoc,path)) # run once so comment out afterwards- we can write an if statement later
-    ''' Labels and Dates'''
 
-    MKLSymbolKernelsPath = "/".join((MKLSymbolPath, 'Kernels'))
+    filename = "/".join((MKLSymbolPath, "LocDictsListCorrect.pkl"))
+    if os.path.isfile(filename):
+        logmemoryusage("Before loading HMMModelFeaturesLabelsCommon")
+        HMMModelFeaturesLabelsCommon = pkl.load(open("/".join((MKLSymbolPath, "LocDictsListCorrect.pkl")), 
+                                                     "rb"), encoding= 'latin1')
+        logmemoryusage("After loading HMMModelFeaturesLabelsCommon")
+        count_i = 0
+        for i in range(1, (len(HMMModelFeaturesLabelsCommon) - 2)):
+            logmemoryusage("Before garbage collect")
+            gc.collect()
+            logmemoryusage("Before feature creation")
+            Xtr, ytr, dataDate = featureCreation(i, HMMModelFeaturesLabelsCommon)
+            Xte, yte, testDate = featureCreation(i + 1, HMMModelFeaturesLabelsCommon)
+            logmemoryusage("After feature creation")
+            print('Doing Dates', dataDate)
 
-    cleanListKernelInputKeys = pkl.load(open("/".join((MKLSymbolKernelsPath, "cleanKernelsList.pkl",)), "rb"),
-                                        encoding='latin1')
-    ''' creating the appropriate paths and making the code far more modular'''
-    SymbolCommonPaths = mkl_base.open_pickle_file(MKLSymbolPath,
-                                                  'LocDictsListCorrect.pkl')  # where the locations of the symbol
-    # paths are
-    kernelInputPaths = mkl_base.open_pickle_file(MKLSymbolPath,
-                                                 'kernelInputsLocations.pkl')  # where the location of the kernel
+            if Xtr.shape[0] == ytr.shape[0]:
+                logmemoryusage("Before starting training")
+                print('Shapes Match- starting training ')
+                # polynomial Kernels ##
+                try:
+                    KLtr = [pairwise.homogeneous_polynomial_kernel(Xtr, degree=d) for d in range(4)]
+                    KLte = [pairwise.homogeneous_polynomial_kernel(Xte, Xtr, degree=d) for d in range(4)]
+                    print('done')
+                    # ''' Compute RBF Kernels'''
+                    # gamma_range = np.logspace(-9, 3, 13)
+                    # ker_list = [rbf_kernel(Xtr, gamma=g) for g in gamma_range]
 
-    symbolHMMDatesList = os.listdir(symbolFeaturesLocation)
+                    # and train 3 classifiers ###
+                    clf = AverageMKL().fit(KLtr, ytr)  # a wrapper for averaging kernels
+                    # print(clf.weights)  # print the weights of the combination of base kernels
+                    print('training EasyMKL...for polynomials and RBF')
+                    clfEasy = EasyMKL(lam=0.1).fit(KLtr, ytr)  # combining kernels with the EasyMKL algorithm
+                    # clfRBF = EasyMKL(lam=0.1).fit(ker_list, ytr)
+                    print('------')
+                    print('finished training')
+                except:
+                    count_i += 1
+                    print(count_i)
+                    print(i, "hin failed here!")
 
-    # list of all the MODEL dates we have generated features files for. each #
-    # each of these dates in symbolFeaturesDates corresponds to a list of dates
-    # (symbolHMMDatesList = '20170829', '20170710', '20170801', ... ]
-    # location of labels : /media/ak/DataOnly/FinDataReal/Labels/[Symbol :PRU.L]/NON_DIRECTIONAL
-
-    symbolLabelsLocation = "/".join((finalLocation, 'Labels', symbols[symbolIdx], 'NON_DIRECTIONAL'))
-
-    # now lets go down into each HMM-model date, and pick all the forward futures (out of sample)
-    hmmFeatureLocations = {}  # symbol-hmm-model-date index --> this is the indexation in symbolFeaturesDatesList
-    commonDatesDict = {}  # this is a struct that will contain for each HMM date, the common labels/features- this should
-    # be used for training and testing
-    createDate = []  # place holder for the hash key of when the features got created
-    symbolEachModelFeaturesDates = {}
-    HMMModelFeaturesLabelsCommon = {}  # location dictionary with 2 keys: HMM Date and Common Date
-    commonDates = []
-
-    LocDictsList = []
-
-    for hmmDateIdx, hmmDate in enumerate(sorted(symbolHMMDatesList)):
-        symbolModelFeaturesDate = os.path.join(symbolFeaturesLocation, symbolHMMDatesList[hmmDateIdx])
-        create_date = os.listdir(symbolModelFeaturesDate)[3].split("_")[-2]
-        # output looks like this: /media/ak/DataOnly/FinDataReal/PRU.L/MODEL_BASED/20170710
-        symbolEachModelFeaturesDates[symbolHMMDatesList[hmmDateIdx]] = [file.split("_")[5] for file in
-                                                                        os.listdir(symbolModelFeaturesDate)]
-        # output is a dictionary where the keys are the HMM models dates and the values a list of dates - for each HMM
-        # date we have a list of features
-        for keyHMMDate in sorted(list(symbolEachModelFeaturesDates.keys())):  # for each of the HMM model dates
-            print(keyHMMDate)
-            common_dates = list(set(symbolEachModelFeaturesDates[keyHMMDate]) & set(symbolLabelsDates))
-            # take the list of feature dates (conditional on HMM model date) + the list of labels -intersection!
-
-            '''we now produce a dict for each HMM model, where each value is a list of common dates and we are key-ed by 
-            the HMM Date '''
-            commonDatesDict[keyHMMDate] = common_dates
-            for commonDate in common_dates:
-                '''iterate through all the common dates and figure out the location of each file for labels and 
-                features '''
-                labelsCommonFileLoc = "/".join((symbolLabelsLocation, ".".join((commonDate, 'csv'))))
-                #             comnDateFeatureLocMaster = os.path.join((symbolModelFeaturesDate, commonDate))
-                commonDatesFeatureFile = "".join(
-                    (symbols[symbolIdx], '_3_states_features_date:_', commonDate, "_now:_", create_date, "_.pickle"))
-                FeatureFileLoc = os.path.join(symbolModelFeaturesDate, commonDatesFeatureFile)
-                checkDir(FeatureFileLoc)
-                checkDir(labelsCommonFileLoc)
-                conditions = [os.path.exists(FeatureFileLoc), os.path.exists(labelsCommonFileLoc)]
-                print(conditions)
-                if all(conditions):
-                    print('all good on Date:', commonDate)
-                    HMMModelFeaturesLabelsCommon[keyHMMDate, commonDate] = [FeatureFileLoc, labelsCommonFileLoc]
-                    pkl.dump(HMMModelFeaturesLabelsCommon,
-                             open("/".join((MKLSymbolPath, "LocDictsListCorrect.pkl")), "wb"))
-
-                else:
-                    print('problem on date: ', commonDate)
                     continue
-                pkl.dump(commonDatesDict,
-                         open("/".join((MKLSymbolPath, "CommonLocationsDicts.pkl")), "wb"))
 
-    count_i = 0
+            else:
+                print('Shapes dont match.')
+                pass
+            print('Average Kernel Testing')
+            try:
+                y_pred_te = clf.predict(KLte)  # predictions average kernel
+                y_pred_tr = clf.predict(KLtr)
+                y_score_te = clf.decision_function(KLte)
+                y_score_tr = clf.decision_function(KLtr)
+                fpr_avg, tpr_avg, thresholds_avg = roc_curve(yte.ravel(), y_score_te.ravel())
+                y_predMKL_te = clfEasy.predict(KLte)  # predictions mkl  test
+                y_predMKL_tr = clfEasy.predict(KLtr)  # predictions mkl  train
+                average_kernel_results['fpr'].append(fpr_avg)
+                average_kernel_results['tpr'].append(tpr_avg)
+                average_kernel_results['train_date'].append(testDate)
+                average_kernel_results['data_date'].append(dataDate)
+                average_kernel_results['Average precision-recall score'].append(\
+                    average_precision_score(y_pred_tr, y_score_tr))
+                average_kernel_results['thresholds'].append(thresholds_avg)
+                average_kernel_results['test_recall'].append(recall_score(yte, y_pred_te, average='weighted'))
+                average_kernel_results['train_recall'].append(recall_score(ytr, y_pred_tr, average='weighted'))
+                fpr_avg = None
+                tpr_avg = None
+                y_scoreMKL_te = clfEasy.decision_function(KLte)  # predictions
+                y_scoreMKL_tr = clfEasy.decision_function(KLtr)  # rank
+                fprMKL, tprMKL, thresholdsMKL = roc_curve(yte.ravel(), y_scoreMKL_te.ravel())
+                MKL_results['fpr'].append(fprMKL)
+                MKL_results['tpr'].append(tprMKL)
+                MKL_results['f1_score'].append(f1_score(ytr, y_predMKL_tr, average='macro'))
+                MKL_results['thresholds'].append(thresholdsMKL)
+                MKL_results['weights'].append(clfEasy.weights)
+                MKL_results['train_date'].append(testDate)
+                MKL_results['data_date'].append(dataDate)
+                MKL_results['Average precision-recall score'].append(
+                    average_precision_score(y_predMKL_tr, y_scoreMKL_tr))
+                MKL_results['test_recall'].append(recall_score(yte, y_predMKL_te, average='weighted'))
+                MKL_results['train_recall'].append(recall_score(ytr, y_predMKL_tr, average='weighted'))
+                fprMKL = None
+                tprMKL = None
 
-    for j in range(0, 5):
-        Xdat, ydat = featureCreation(j, SymbolCommonPaths)
-
-        Xtr, Xte, ytr, yte = train_test_split(Xdat, ydat, test_size=.3, random_state=0)
-        print(Xtr.shape[0] == ytr.shape[0], Xte.shape[0] == yte.shape[0])
-        try:
-
-            ''' do the kernel fitting'''
-            KLtr = [pairwise.homogeneous_polynomial_kernel(Xtr, degree=d) for d in range(4)]
-            ''' Compute RBF Kernels'''
-            KLte = [pairwise.homogeneous_polynomial_kernel(Xte, Xtr, degree=d) for d in range(4)]
-            gamma_range = np.logspace(-9, 3, 13)
-            ker_list_tr = [rbf_kernel(Xtr, gamma=g) for g in gamma_range]
-            ker_list_te = [rbf_kernel(Xte, gamma=g) for g in gamma_range]
-            print('training EasyMKL...for polynomials and RBF', end='')
-
-            ''' fit the classifiers'''
-            clf = AverageMKL().fit(KLtr, ytr)  # a wrapper for averaging kernels
-            clfEasy = EasyMKL(lam=0.1).fit(KLtr, ytr)  # combining kernels with the EasyMKL algorithm
-            clfRBF = EasyMKL(lam=0.1).fit(ker_list_tr, ytr)
-            base_learner = SVC(C=100, gamma=10)
-            clfSVC = EasyMKL(learner=base_learner)
-            clfSVC = clf.fit(KLtr, ytr)
-            print('------')
-            print('finished training')
-        except:
-            count_i += 1
-            print(count_i)
-            print(j, "hin failed here!")
-
-        ''' need to find a smarter way to do the rest'''
-        y_pred = clf.predict(KLte)  # predictions
-        y_score = clf.decision_function(KLte)  # rank
-        accuracy = accuracy_score(yte, y_pred)
-        roc_auc = roc_auc_score(yte, y_score)
-        print('Average Kernel Accuracy score: %.3f, roc AUC score: %.3f' % (accuracy, roc_auc))
-
-        ''' Test Linear'''
-        print('SimpleMKL-Linear Testing')
-        y_pred_easy = clfEasy.predict(KLte)  # predictions
-        y_score_easy = clfEasy.decision_function(KLte)  # rank
-        accuracy_easy = accuracy_score(yte, y_pred_easy)
-        roc_auc_easy = roc_auc_score(yte, y_score_easy)
-
-        print('EasyMKL Accuracy score: %.3f, roc AUC score: %.3f' % (accuracy_easy, roc_auc_easy))
-
-        ''' Test Linear'''
-        print('SVC Base Learner-Linear Testing')
-        y_pred_SVC = clfSVC.predict(KLte)  # predictions
-        y_score_SVC = clfSVC.decision_function(KLte)  # rank
-        accuracy_SVC = accuracy_score(yte, y_pred_SVC)
-        roc_auc_SVC = roc_auc_score(yte, y_score_SVC)
-
-        print('MKL with SVC RBF Base Learner Accuracy score: %.3f, roc AUC score: %.3f' % (accuracy_SVC, roc_auc_SVC))
-
-
-
-
-
+                # accuracy_average = accuracy_score(yte, y_pred_te)
+                average_kernel_results['test_accuracy'].append(accuracy_score(yte, y_pred_te))
+                average_kernel_results['train_accuracy'].append(accuracy_score(ytr, y_pred_tr))
+                # accuracy_mkl = accuracy_score(yte, y_predMKL_te)
+                MKL_results['train_accuracy'].append(accuracy_score(ytr, y_predMKL_tr))
+                MKL_results['test_accuracy'].append(accuracy_score(yte, y_predMKL_te))
+                average_kernel_results['f1_score'].append(f1_score(ytr, y_pred_tr, average='macro'))
+                print('Accuracy of Average Kernel:', average_kernel_results['f1_score'])
+                fileNameAVG = "".join((str(symbol), "_one_day_ahead_average_kernel_results.pkl"))
+                fileNameMKL = "".join((str(symbol), "_one_day_ahead_multiple_kernel_results.pkl"))
+                pkl.dump(MKL_results, open("/".join((MKLSymbolPath, fileNameMKL)), "wb"))
+                pkl.dump(average_kernel_results, open("/".join((MKLSymbolPath, fileNameAVG)), "wb"))
+                print('about to  save:',fileNameAVG )
+                fileNameAVG = None
+                fileNameMKL = None
+            except:
+                continue

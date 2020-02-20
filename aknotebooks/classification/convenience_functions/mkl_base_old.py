@@ -1,3 +1,5 @@
+
+
 class CreateElements(object):
     """
     Utility class that creates forward dates from a dictionary and a specific key, and reads and returns features from a
@@ -49,11 +51,7 @@ class CreateElements(object):
 
 hardDrivesLoc = '/media/ak/'
 dataOnlyDrive = '/media/ak/DataOnly'  # external date only drive
-# ext_drive_loc = ('/media/ak/My Passport/Experiment Data/')
 
-data_dir = os.getenv('FINANCE_DATA')  # internal folder with finance data
-ext_drive_loc = '/media/ak/My Passport/Experiment Data/'
-#  input drive
 inputDrive = hardDrivesLoc
 ''' Inputs '''
 folderIdx = 0
@@ -112,7 +110,7 @@ symbolHMMDatesList = os.listdir(symbolFeaturesLocation)
 # location of labels : /media/ak/DataOnly/FinDataReal/Labels/[Symbol :PRU.L]/NON_DIRECTIONAL
 
 symbolLabelsLocation = "/".join((finalLocation, 'Labels', symbols[symbolIdx], 'NON_DIRECTIONAL'))
-@@ -65,128 +132,88 @@
+
 
 symbolLabelsDates = [dateFile.split(".")[0] for dateFile in os.listdir(symbolLabelsLocation)]
 
@@ -308,19 +306,3 @@ def pickleLocsList(loc_dicts_list):
 
 
 # dump it all in the same location# #
-if __name__ == '__main__':
-    # getLocationsList()
-    print(symbols)
-    print("Picked Symbol:", symbols[symbolIdx])
-    print(symbolLocation)
-    print(symbolFeaturesLocation)
-    checkDir(symbolFeaturesLocation)
-    print(selectionLoc)
-    print(DataLoc)
-    checkDir(DataLoc)
-    print(MKLExpPath)
-    checkDir(MKLExpPath)
-    print(MKLSymbolPath)
-    checkDir(MKLSymbolPath)
-    getLocationsList()
- 68  aknotebooks/classification/convenience_functions/mkl_predict.py 
