@@ -113,10 +113,10 @@ if __name__ == '__main__':
     folderIdx = 0
     folderList = [s for s in os.listdir(dataOnlyDrive) if s.startswith('Dat') or s.startswith('Fin')]
     finalLocation = "/".join((dataOnlyDrive, folderList[folderIdx]))
-    symbols = [s for s in os.listdir(finalLocation) if s.endswith('.L')]  # keep a list of the symbols
+    symbols = sorted([s for s in os.listdir(finalLocation) if s.endswith('.L')])  # keep a list of the symbols
     print(symbols)
     # picking up a specific symbol
-    symbolIdx = 5  # pick one of the symbols
+    symbolIdx = 9  # pick one of the symbols
     symbol = symbols[symbolIdx]
     print(symbol)
     # symbols[symbolIdx] -->output :PRU.L
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     filename = "/".join((MKLSymbolPath, "LocDictsListCorrect.pkl"))
     if os.path.isfile(filename):
         logmemoryusage("Before loading HMMModelFeaturesLabelsCommon")
-        HMMModelFeaturesLabelsCommon = pkl.load(open("/".join((MKLSymbolPath, "LocDictsListCorrect.pkl")), 
+        HMMModelFeaturesLabelsCommon = pkl.load(open("/".join((MKLSymbolPath, "LocDictsListCorrect.pkl")),
                                                      "rb"), encoding= 'latin1')
         logmemoryusage("After loading HMMModelFeaturesLabelsCommon")
         count_i = 0
