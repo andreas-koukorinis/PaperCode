@@ -106,7 +106,7 @@ if __name__ == '__main__':
     print(len(symbols))
 
     # symbol specific
-    symbolIdx = 36
+    symbolIdx = 39
     symbol = symbols[symbolIdx]
     MKLExpPath = "/".join((MKLPath, symbol, 'Experiments'))  # symbol is in symbols
     MKLSymbolPath = "/".join((MKLPath, symbol))  # symbol is in symbols

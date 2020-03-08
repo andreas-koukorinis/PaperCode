@@ -116,7 +116,7 @@ if __name__ == '__main__':
     symbols = sorted([s for s in os.listdir(finalLocation) if s.endswith('.L')])  # keep a list of the symbols
     print(symbols)
     # picking up a specific symbol
-    symbolIdx = 9  # pick one of the symbols
+    symbolIdx = 10  # pick one of the symbols
     symbol = symbols[symbolIdx]
     print(symbol)
     # symbols[symbolIdx] -->output :PRU.L
