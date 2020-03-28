@@ -1,5 +1,5 @@
 import numpy as np
-import pickle
+import pickle as pkl
 import os
 
 import pandas as pd
@@ -19,7 +19,13 @@ extHdExpData = "".join((extHD, 'Experiment Data'))  # ['features', 'labels', 'me
 extHdFutures = "".join((extHD, 'Barket Data/raw bloomberg data'))  # futures
 futuresSymbols = []
 cleanLOBFolder = "/".join((extHdExpData,'CleanLOBData'))
-bmrg_folders = [s for s in os.listdir(extHdFutures) if ('Comdty') in s]
+barketData = '/media/ak/My Passport/Barket Data/'
+#
+targetDrive = barketData
+bmrg_folders=[s for s in os.listdir(targetDrive ) if s.endswith('Comdty')]
+bmrg_trades=sorted([s for s in os.listdir(targetDrive ) if s.endswith('y_trades')])
+bmrg_quotes=sorted([s for s in os.listdir(targetDrive ) if s.endswith('y_quotes')])
+bmrg_tickers=sorted([bmrg_trades[idx].split('_t')[0] for idx,_ in enumerate(bmrg_trades)])
 
 
 def rawLOBFIle(futuresFolder, symbolsFolder, symbolID, fileID):
@@ -102,19 +108,25 @@ def storeCleanLOB( cleanLOB, targetFolder,symbolID, symbolsFolder= bmrg_folders 
     cleanLOBFileLoc = "/".join((cleanLOBFolder,symbol ,cleanLOBDateFileName))
     return cleanLOB.to_csv(cleanLOBFileLoc)
 
-
-
 if __name__ == '__main__':
+    symbolIdx = 1
+    print(bmrg_quotes[symbolIdx])
+    print(bmrg_trades[symbolIdx])
+    # get dates and files
+    symbol_quotes = os.path.join(targetDrive, str(bmrg_quotes[symbolIdx]))
+    symbol_trades = os.path.join(targetDrive, str(bmrg_trades[symbolIdx]))
+    symbolQuoteDates = [quoteFile.split(".")[0] for quoteFile in os.listdir(symbol_quotes)]
+    symbolTradeDates = [tradeFile.split(".")[0] for tradeFile in os.listdir(symbol_trades)]
 
-    symbolID=3
-    for symbolID in range(0, len(bmrg_folders)):
-        print(bmrg_folders[symbolID])
+    dfAllTrades = {}
+    dfAllQuotes = {}
+    quoteTradeDates = [eventDate for eventDate in symbolQuoteDates if eventDate in symbolTradeDates]
+    for idx, date in enumerate(quoteTradeDates):
+        dfAllTrades[date] = pd.read_csv(os.path.join(symbol_trades, quoteTradeDates[idx] + '.csv'))
+        dfAllQuotes[date] = pd.read_csv(os.path.join(symbol_quotes, quoteTradeDates[idx] + '.csv'))
+    dfAllQuotesName = "".join(('AllQuotes', bmrg_quotes[symbolIdx], 'Comdty.pkl'))
+    dfAllTradesName = "".join(('AllTrades', bmrg_trades[symbolIdx], 'Comdty.pkl'))
+    pkl.dump(dfAllQuotes, open("/".join((symbol_quotes, dfAllQuotesName)), "wb"))
+    pkl.dump(dfAllTrades, open("/".join((symbol_trades, dfAllTradesName)), "wb"))
 
 
-
-    for fileIDx in range(0,200):
-        fileID=fileIDx
-        rawInputFile =rawLOBFIle(futuresFolder=extHdFutures, symbolsFolder=bmrg_folders, symbolID=symbolID, fileID=fileID)
-        testLOB =(createLOB(rawLOBFile = rawInputFile))
-        cleanLOB = formatLOB(testLOB)
-        storeCleanLOB(cleanLOB,cleanLOBFolder, symbolID, bmrg_folders)
