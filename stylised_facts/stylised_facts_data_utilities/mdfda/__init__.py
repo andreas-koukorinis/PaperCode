@@ -2,6 +2,7 @@ import numpy as np
 from numpy import cumsum, polyfit, polyval, mean, sqrt, arange, zeros, nan
 from numpy.lib.stride_tricks import as_strided as ast
 import matplotlib.pyplot as plt
+from numpy.polynomial.polynomial import polyval as mpolyval, polyfit as mpolyfit
 
 
 """
@@ -178,17 +179,17 @@ def simpleRMS(X, scales, m=1, verbose=False):
 
 	Examples
 	--------
-    >>> X = cumsum(0.1*randn(8000))
-    >>> scales = (2**arange(4,10)).astype('i4')
-	>>> RMS = simpleRMS(X,scales)
-    >>> for i,x in enumerate(RMS):
+    # >>> X = cumsum(0.1*randn(8000))
+    # >>> scales = (2**arange(4,10)).astype('i4')
+	# >>> RMS = simpleRMS(X,scales)
+    # >>> for i,x in enumerate(RMS):
             subplot(len(scales),1,len(scales)-i)
             t = arange(x.shape[0])*scales[i] + 0.5*scales[i]
             step(r_[t,t[-1]],r_[x,x[-1]])
             plot(xlim(),x.mean()*r_[1,1],'r',lw=2.0)
 
 	"""
-    from numpy.polynomial.polynomial import polyval as mpolyval, polyfit as mpolyfit
+
     out = []
     for scale in scales:
         Y = rw(X, scale, scale)
@@ -229,7 +230,7 @@ def fastRMS(X, scales, m=1, verbose=False):
     #         loglog(scales,((mRMS**q).mean(1))**(1.0/q),'o-',ms=5.0,lw=0.5)
 
 	"""
-    from numpy.polynomial.polynomial import polyval as mpolyval, polyfit as mpolyfit
+
     step = scales[0]
     out = nan + zeros((len(scales), X.shape[0] // step), 'f8')
     j = 0
@@ -259,10 +260,10 @@ def MRMS(X, scale, step, m=1, verbose=False):
 
 	Examples
 	--------
-    >>> X = cumsum(0.1*randn(8000))
-    >>> step = 32
-	>>> RMS = MRMS(X,256,step)
-    >>> plot(arange(RMS.shape[0])*step,RMS)
+    # >>> X = cumsum(0.1*randn(8000))
+    # >>> step = 32
+	# >>> RMS = MRMS(X,256,step)
+    # >>> plot(arange(RMS.shape[0])*step,RMS)
 
 	"""
     from numpy.polynomial.polynomial import polyval as mpolyval, polyfit as mpolyfit
@@ -297,11 +298,11 @@ def compFq(rms, qs):
 
     """
     out = zeros((rms.shape[0], len(qs)), 'f8')
-    mRMS = ma.array(rms, mask=isnan(rms))
-    for qi in xrange(len(qs)):
+    mRMS = np.ma.array(rms, mask=np.isnan(rms))
+    for qi in range(len(qs)):
         p = qs[qi]
         out[:, qi] = (mRMS ** p).mean(1) ** (1.0 / p)
-    out[:, qs == 0] = exp(0.5 * (log(mRMS ** 2.0)).mean(1))[:, None]
+    out[:, qs == 0] = np.exp(0.5 * (np.log(mRMS ** 2.0)).mean(1))[:, None]
     return out
 
 
