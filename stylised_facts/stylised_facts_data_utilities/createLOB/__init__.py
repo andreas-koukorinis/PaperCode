@@ -4,8 +4,12 @@ import os
 
 import pandas as pd
 import numpy as np
-
+import matplotlib.pyplot as plt
 import time
+from glob import glob
+
+from scipy.signal import savgol_filter
+from scipy.special import gamma
 
 from collections import defaultdict
 
@@ -21,14 +25,16 @@ extHdData = "".join((extHD, 'Data'))
 extHdExpData = "".join((extHD, 'Experiment Data'))  # ['features', 'labels', 'metrics', 'models']
 extHdFutures = "".join((extHD, 'Barket Data/raw bloomberg data'))  # futures
 futuresSymbols = []
-cleanLOBFolder = "/".join((extHdExpData,'CleanLOBData'))
+cleanLOBFolder = "/".join((extHdExpData, 'CleanLOBData'))
 barketData = '/media/ak/My Passport/Barket Data/'
 #
 targetDrive = barketData
-bmrg_folders=[s for s in os.listdir(targetDrive ) if s.endswith('Comdty')]
-bmrg_trades=sorted([s for s in os.listdir(targetDrive ) if s.endswith('y_trades')])
-bmrg_quotes=sorted([s for s in os.listdir(targetDrive ) if s.endswith('y_quotes')])
-bmrg_tickers=sorted([bmrg_trades[idx].split('_t')[0] for idx,_ in enumerate(bmrg_trades)])
+bmrg_folders = [s for s in os.listdir(targetDrive) if s.endswith('Comdty')]
+bmrg_trades = sorted([s for s in os.listdir(targetDrive) if s.endswith('y_trades')])
+bmrg_quotes = sorted([s for s in os.listdir(targetDrive) if s.endswith('y_quotes')])
+bmrg_tickers = sorted([bmrg_trades[idx].split('_t')[0] for idx, _ in enumerate(bmrg_trades)])
+
+
 # '''
 #
 #   class to compute all the various quantities needed for the Limit Order Book
@@ -47,7 +53,7 @@ class Clocks(object):
     def __init__(self, df, price_column, volume_column, dv_column, mticks, vticks, dvticks):
         self.df = df
         self.price_column = price_column
-        self.mticks = mticks # should this be a property of the class?
+        self.mticks = mticks  # should this be a property of the class?
         self.volume_column = volume_column
         self.vticks = vticks
         self.dv_column = dv_column
@@ -129,7 +135,8 @@ class Clocks(object):
         idx = self.volume_bars()
         return self.df.iloc[idx].drop_duplicates()
 
-
+    def original_df(self):
+        return self.df
 
     def dollar_bars(self):
         '''
@@ -157,6 +164,92 @@ class Clocks(object):
         idx = self.dollar_bars()
         return self.df.iloc[idx].drop_duplicates()
 
+
+class autoCorrel(object):
+
+    def __init__(self, df, tick_window=20):
+        self.df = df
+        self.tick_window = tick_window
+
+    def ticks(self):
+        ticks = np.sign(self.df.TradePrice - self.df.TradePrice.shift(1))
+        ticks_adj = ticks.copy()
+        return ticks_adj.replace(to_replace=0, method='ffill')
+
+    def ema(self):
+        '''
+        returns exponential moving average of ticks, for a predefined window
+        '''
+        ema = self.ticks.ewm(span=self.tick_window).mean()
+        return ema
+
+    def figAutocorrel(self, title='autocorrelsymbol', xlineLevel=80):
+        from matplotlib.ticker import AutoMinorLocator
+        size = 15
+        params = {'legend.fontsize': 'large',
+                  'figure.figsize': (20, 8),
+                  'axes.labelsize': size,
+                  'axes.titlesize': size,
+                  'xtick.labelsize': size * 0.75,
+                  'ytick.labelsize': size * 0.75,
+                  'axes.titlepad': 25}
+        fig, ax1 = plt.subplots(figsize=(16, 9))
+        ax1.xaxis.set_minor_locator(AutoMinorLocator())
+        ax1.yaxis.set_minor_locator(AutoMinorLocator())
+        autoCorrelDict = {}
+        # Set up the second axis
+        ax2 = ax1.twiny()
+        ax1.set_facecolor('xkcd:white')
+        for i in np.arange(1, 500):
+            ax1.bar(i, self.ticks().autocorr(lag=i), color='blue')
+            autoCorrelDict[i] = self.ticks().autocorr(lag=i)
+        ax1.set_title('Autocorrelation by lag')
+        ax1.set_ylabel('Autocorrelation')
+        ax1.set_xlabel('Lag')
+
+        # Initial value of y at t=0, lifetime in s
+        N, tau = 1, 15
+        # Maximum time to consider (s)
+        tmax = 500
+        ntau = tmax // tau + 1
+        # A suitable grid of time points, and the exponential decay itself
+        t = np.linspace(0, tmax, 400)
+        y = N * np.exp(-t / tau)
+
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
+        ax1.plot(t, y, color='black', linestyle='--')
+        #     axvline(x=.5, ymin=0.25, ymax=0.75)
+        ax1.axvline(x=xlineLevel, ymin=0.0, ymax=0.8, ls='--', alpha=0.7, color='#334f8d')
+        ax1.text(xlineLevel, 0.85, 'lag ' + str(xlineLevel), rotation=90, fontsize=12)
+        xtick_labels = [r'$0$', r'$\tau$'] + [r'${}\tau$'.format(k) for k in range(2, ntau)]
+        ax2.set_xticklabels(xtick_labels)
+        plt.savefig('/home/ak/Documents/Research/Papers/figures/' + title + '.png', dpi=150)
+        plt.show()
+        return autoCorrelDict
+
+
+def get_ohlc(ref, sub):
+    '''
+    fn: get ohlc from custom bars
+
+    # args
+        ref : reference pandas series with all prices
+        sub : custom tick pandas series
+    # returns
+        tick_df : dataframe with ohlc values
+    '''
+    ohlc = []
+    for i in tqdm(range(sub.index.shape[0] - 1)):
+        start, end = sub.index[i], sub.index[i + 1]
+        tmp_ref = ref.loc[start:end]
+        max_px, min_px = tmp_ref.max(), tmp_ref.min()
+        o, h, l, c = sub.iloc[i], max_px, min_px, sub.iloc[i + 1]
+        ohlc.append((end, start, o, h, l, c))
+    cols = ['End', 'Start', 'Open', 'High', 'Low', 'Close']
+    return (pd.DataFrame(ohlc, columns=cols))
+
+
 def rawLOBFIle(futuresFolder, symbolsFolder, symbolID, fileID):
     ''' read the appropriate data and produce a raw LOB file
     futuresFolder: where the extHDFutures folder is
@@ -180,10 +273,10 @@ def createLOB(rawLOBFile):
     dfASK = rawLOBFile[rawLOBFile['type'] == 'ASK']
     dfTRADE = rawLOBFile[rawLOBFile['type'] == 'TRADE']
 
-    dfBID.loc[:,('TradeTime')] = pd.to_datetime(dfBID.time).values
-    dfASK.loc[:,('TradeTime')] = pd.to_datetime(dfASK.time).values
-    dfTRADE.loc[:,('TradeTime')] = pd.to_datetime(dfTRADE.time).values
-    dfTRADE.loc[:,('TradeId')] = dfTRADE.index.values
+    dfBID.loc[:, ('TradeTime')] = pd.to_datetime(dfBID.time).values
+    dfASK.loc[:, ('TradeTime')] = pd.to_datetime(dfASK.time).values
+    dfTRADE.loc[:, ('TradeTime')] = pd.to_datetime(dfTRADE.time).values
+    dfTRADE.loc[:, ('TradeId')] = dfTRADE.index.values
     dfBID = dfBID.dropna().fillna("ffill").sort_values('TradeTime')
     dfASK = dfASK.dropna().fillna("ffill").sort_values('TradeTime')
     dfTRADE = dfTRADE.dropna().fillna("ffill").sort_values('TradeTime')
@@ -194,26 +287,29 @@ def createLOB(rawLOBFile):
 
     return pd.DataFrame(LOB)
 
+
 def formatLOB(LOB):
-   '''
+    '''
 
    :param LOB: clean LOB dataframe
    :return: formatted with additional fields and more calculations
    '''
-   LOB = LOB.rename(
-       columns={'Unnamed: 0_y': 'AskQuoteId', 'Unnamed: 0_x': 'BidQuoteId', 'value_x': 'BestBid', 'value_y': 'BestAsk',
-                'size_x': 'BidSize', 'size_y': 'AskSize', 'time_x': 'QuoteTime', 'time': 'TradedTime',
-                'value': 'TradePrice', 'size': 'TradeVolume', 'Unnamed: 0': 'TradeId'})
-   LOB.BidSize = LOB['BidSize'].replace(0, 1)
-   LOB.AskSize = LOB['AskSize'].replace(0, 1)
-   LOB['TimeStamp'] = pd.to_datetime(LOB.TradeTime).dt.time
-   LOB['TradeVolume'] = LOB['TradeVolume'] .fillna(0)
-   LOB['milliSeconds'] = [(((x.hour * 60 + x.minute) * 60 + x.second) * 1000) for x in LOB['TimeStamp']]
-   LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
-   LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (LOB.AskSize + LOB.BidSize)  # weighted mid price
-   LOB['TradeSize'] = LOB.TradeVolume
+    LOB = LOB.rename(
+        columns={'Unnamed: 0_y': 'AskQuoteId', 'Unnamed: 0_x': 'BidQuoteId', 'value_x': 'BestBid', 'value_y': 'BestAsk',
+                 'size_x': 'BidSize', 'size_y': 'AskSize', 'time_x': 'QuoteTime', 'time': 'TradedTime',
+                 'value': 'TradePrice', 'size': 'TradeVolume', 'Unnamed: 0': 'TradeId'})
+    LOB.BidSize = LOB['BidSize'].replace(0, 1)
+    LOB.AskSize = LOB['AskSize'].replace(0, 1)
+    LOB['TimeStamp'] = pd.to_datetime(LOB.TradeTime).dt.time
+    LOB['TradeVolume'] = LOB['TradeVolume'].fillna(0)
+    LOB['milliSeconds'] = [(((x.hour * 60 + x.minute) * 60 + x.second) * 1000) for x in LOB['TimeStamp']]
+    LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
+    LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
+                LOB.AskSize + LOB.BidSize)  # weighted mid price
+    LOB['TradeSize'] = LOB.TradeVolume
 
-   return LOB
+    return LOB
+
 
 def calcLOB(LOB):
     '''
@@ -229,7 +325,8 @@ def calcLOB(LOB):
     LOB['LogReturn'] = np.log(1 + LOB.PriceChange)
     LOB['BidOffer'] = LOB.BestAsk - LOB.BestBid
     LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
-    LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (LOB.AskSize + LOB.BidSize) #weighted mid price
+    LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
+                LOB.AskSize + LOB.BidSize)  # weighted mid price
     LOB['MicroPricePctChange'] = LOB['MicroPrice'].pct_change()
     LOB['FwdMPChange_1'] = LOB.MicroPricePctChange.shift(1)
     LOB['FwdMPChange_5'] = LOB.MicroPricePctChange.shift(5)
@@ -238,7 +335,7 @@ def calcLOB(LOB):
     return LOB
 
 
-def storeCleanLOB( cleanLOB, targetFolder,symbolID, symbolsFolder= bmrg_folders ):
+def storeCleanLOB(cleanLOB, targetFolder, symbolID, symbolsFolder=bmrg_folders):
     """
     meant to store the file into a hard drive
     :param cleanLOB: a clean LOB to be stored
@@ -247,10 +344,212 @@ def storeCleanLOB( cleanLOB, targetFolder,symbolID, symbolsFolder= bmrg_folders 
     :param symbolID: enumerate of symbol
     :return: stores the file
     """
-    symbol = symbolsFolder[symbolID].split("_")[0] #pick the right symbol
+    symbol = symbolsFolder[symbolID].split("_")[0]  # pick the right symbol
     targetFolder = cleanLOBFolder
-    cleanLOBDate = str(pd.to_datetime(cleanLOB.QuoteTime[0]).date()) #pick the right date
+    cleanLOBDate = str(pd.to_datetime(cleanLOB.QuoteTime[0]).date())  # pick the right date
     cleanLOBDateFileName = "_".join(('LOB', str(symbol), cleanLOBDate + ".csv"))
-    cleanLOBFileLoc = "/".join((cleanLOBFolder,symbol ,cleanLOBDateFileName))
+    cleanLOBFileLoc = "/".join((cleanLOBFolder, symbol, cleanLOBDateFileName))
     return cleanLOB.to_csv(cleanLOBFileLoc)
 
+
+class Volestim(object):
+    def __init__(self, df, clean=True, window=30, trading_periods=252):
+        '''
+        realised volatility estimation using different methodologies
+        :param df:
+         Parameters
+        ----------
+        window : int
+            Rolling window for which to calculate the estimator
+        clean : boolean
+            Set to True to remove the NaNs at the beginning of the series
+
+        Returns
+        -------
+        y : pandas.DataFrame
+            Estimator series values
+
+        '''
+        self.df = df
+        self.window = window
+        self.trading_periods = trading_periods
+        self.clean = True
+        pass
+
+    def rogersSatchell(self):
+
+        log_ho = (self.df['High'] / self.df['Open']).apply(np.log)
+        log_lo = (self.df['Low'] / self.df['Open']).apply(np.log)
+        log_co = (self.df['Close'] / self.df['Open']).apply(np.log)
+
+        rs = log_ho * (log_ho - log_co) + log_lo * (log_lo - log_co)
+
+        def f(v):
+            return self.trading_periods * v.mean() ** 0.5
+
+        result = rs.rolling(
+            window=self.window,
+            center=False).apply(func=f)
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def kurtosis(self):
+
+        log_return = (self.df['Close'] / self.df['Close'].shift(1)).apply(np.log)
+
+        result = log_return.rolling(
+            window=self.window,
+            center=False
+        ).kurt()
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def yangZhang(self):
+
+        log_ho = (self.df['High'] / self.df['Open']).apply(np.log)
+        log_lo = (self.df['Low'] / self.df['Open']).apply(np.log)
+        log_co = (self.df['Close'] / self.df['Open']).apply(np.log)
+
+        log_oc = (self.df['Open'] / self.df['Close'].shift(1)).apply(np.log)
+        log_oc_sq = log_oc ** 2
+
+        log_cc = (self.df['Close'] / self.df['Close'].shift(1)).apply(np.log)
+        log_cc_sq = log_cc ** 2
+
+        rs = log_ho * (log_ho - log_co) + log_lo * (log_lo - log_co)
+
+        close_vol = log_cc_sq.rolling(
+            window=self.window,
+            center=False
+        ).sum() * (1.0 / (self.window - 1.0))
+        open_vol = log_oc_sq.rolling(
+            window=self.window,
+            center=False
+        ).sum() * (1.0 / (self.window - 1.0))
+        window_rs = rs.rolling(
+            window=self.window,
+            center=False
+        ).sum() * (1.0 / (self.window - 1.0))
+
+        k = 0.34 / (1 + (self.window + 1) / (self.window - 1))
+        result = (open_vol + k * close_vol + (1 - k) * window_rs).apply(np.sqrt) * np.sqrt(self.trading_periods)
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def garmanKlass(self):
+
+        log_hl = (self['High'] / self['Low']).apply(np.log)
+        log_co = (self['Close'] / self['Open']).apply(np.log)
+
+        rs = 0.5 * log_hl ** 2 - (2 * np.log(2) - 1) * log_co ** 2
+
+        def f(v):
+            return (self.trading_periods * v.mean()) ** 0.5
+
+        result = rs.rolling(window=self.window, center=False).apply(func=f)
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def simpleVol(self):
+
+        log_return = (self.df['Close'] / self.df['Close'].shift(1)).apply(np.log)
+
+        result = log_return.rolling(
+            window=self.window,
+            center=False
+        ).std() * np.sqrt(self.trading_periods)
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def parkinson(self):
+
+        rs = (1.0 / (4.0 * np.log(2.0))) * ((self.df['High'] / self.df['Low']).apply(np.log)) ** 2.0
+
+        def f(v):
+            return self.trading_periods * v.mean() ** 0.5
+
+        result = rs.rolling(
+            window=self.window,
+            center=False
+        ).apply(func=f)
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def hodgesTompkins(self):
+
+        log_return = (self.df['Close'] / self.df['Close'].shift(1)).apply(np.log)
+
+        vol = log_return.rolling(
+            window=self.window,
+            center=False
+        ).std() * np.sqrt(self.trading_periods)
+
+        h = self.window
+        n = (log_return.count() - h) + 1
+
+        adj_factor = 1.0 / (1.0 - (h / n) + ((h ** 2 - 1) / (3 * n ** 2)))
+
+        result = vol * adj_factor
+
+        if self.clean:
+            return result.dropna()
+        else:
+            return result
+
+    def tripower_volatility(self,column):
+        """
+        Realized tripower volatility (e.g. Barndorff-Nielsen, Shephard, and Winkel (2006))
+        """
+        x = pd.Series(self.df[str(column)])
+        xi = 0.5 * (gamma(5 / 6) / gamma(1 / 2)) ** -3
+        z = (x.abs() ** (2 / 3) * x.shift(1).abs() ** (2 / 3) * x.shift(-1).abs() ** (2 / 3)).bfill().ffill()
+        return xi * z.sum()
+
+    def shortest_half(self, column):
+        """
+        Shortest-half scale estimator (Rousseeuw and Leroy, 1998)
+        """
+        xs = np.sort(self.df[str(column)])
+        l = x.size
+        h = int(np.floor(l / 2) + 1)
+        if l % 2 == 0:
+            sh = 0.7413 * np.min(xs[h - 1:] - xs[:h - 1])
+        else:
+            sh = 0.7413 * np.min(xs[h - 1:] - xs[:h])
+        return sh
+
+    def bipower_variation(self,column):
+        '''
+        Bipower Variation (BV) is the sum of the product of absolute time series returns
+        :param column: price column
+        :return: returns bivariate variation
+        '''
+        X = self.df[str(column)]
+        u = np.sqrt(np.pi / 2) ** -2
+        pre_log = u * sum([abs(f) * abs(p) for f, p in zip(X[2:], X[1:])])
+
+        # check for log(0)
+        try:
+            BV = np.log(pre_log)
+        except:
+            BV = np.nan
+
+        return BV
