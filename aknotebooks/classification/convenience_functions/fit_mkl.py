@@ -4,9 +4,9 @@ import os
 import pandas as pd
 import numpy as np
 import pickle as pkl
-import aknotebooks.classification.convenience_functions.mkl_base as mkl_base
+import classification.convenience_functions.mkl_base as mkl_base
 from MKLpy.metrics.pairwise.misc import homogeneous_polynomial_kernel as HPK_kernel
-from aknotebooks.classification.convenience_functions.mkl_base import hardDrivesLoc, dataOnlyDrive, folderList, symbols, dataList, finalLocation
+from classification.convenience_functions.mkl_base import hardDrivesLoc, dataOnlyDrive, folderList, symbols, dataList, finalLocation
 
 
 def featureCreation(idxKey, locDict):

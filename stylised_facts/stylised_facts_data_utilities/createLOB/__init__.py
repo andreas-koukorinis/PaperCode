@@ -447,8 +447,8 @@ class Volestim(object):
 
     def garmanKlass(self):
 
-        log_hl = (self['High'] / self['Low']).apply(np.log)
-        log_co = (self['Close'] / self['Open']).apply(np.log)
+        log_hl = (self.df['High'] / self.df['Low']).apply(np.log)
+        log_co = (self.df['Close'] / self.df['Open']).apply(np.log)
 
         rs = 0.5 * log_hl ** 2 - (2 * np.log(2) - 1) * log_co ** 2
 
@@ -514,21 +514,24 @@ class Volestim(object):
         else:
             return result
 
-    def tripower_volatility(self,column):
+
+    @staticmethod
+    def tripower_volatility(dframe, columnName,rollingWindow=50):
         """
         Realized tripower volatility (e.g. Barndorff-Nielsen, Shephard, and Winkel (2006))
         """
-        x = pd.Series(self.df[str(column)])
+        x = pd.Series(dframe[str(columnName)])
         xi = 0.5 * (gamma(5 / 6) / gamma(1 / 2)) ** -3
         z = (x.abs() ** (2 / 3) * x.shift(1).abs() ** (2 / 3) * x.shift(-1).abs() ** (2 / 3)).bfill().ffill()
-        return xi * z.sum()
+        return xi * z.rolling(window=rollingWindow).sum()
 
-    def shortest_half(self, column):
+    @staticmethod
+    def shortest_half(dframe, columnName,rollingWindow=50):
         """
         Shortest-half scale estimator (Rousseeuw and Leroy, 1998)
         """
-        xs = np.sort(self.df[str(column)])
-        l = x.size
+        xs = np.sort(dframe[str(columnName)])
+        l = dframe[str(columnName)].size
         h = int(np.floor(l / 2) + 1)
         if l % 2 == 0:
             sh = 0.7413 * np.min(xs[h - 1:] - xs[:h - 1])
@@ -536,13 +539,15 @@ class Volestim(object):
             sh = 0.7413 * np.min(xs[h - 1:] - xs[:h])
         return sh
 
-    def bipower_variation(self,column):
+
+    @staticmethod
+    def bipower_variation(dframe, columnName,rollingWindow=50):
         '''
         Bipower Variation (BV) is the sum of the product of absolute time series returns
         :param column: price column
         :return: returns bivariate variation
         '''
-        X = self.df[str(column)]
+        X = dframe[str(columnName)]
         u = np.sqrt(np.pi / 2) ** -2
         pre_log = u * sum([abs(f) * abs(p) for f, p in zip(X[2:], X[1:])])
 

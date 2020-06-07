@@ -98,11 +98,11 @@ def compFq(rms, qs):
 
     Example
     -------
-    >>> X = cumsum(0.1*randn(8000))
-    >>> scales = (2**arange(4,10)).astype('i4')
-	>>> RMS = fastRMS(X,scales)
-    >>> qs = arange(-5,5.1,1.0)
-    >>> loglog(scales,compFq(RMS,qs),'.-')
+    # >>> X = cumsum(0.1*randn(8000))
+    # >>> scales = (2**arange(4,10)).astype('i4')
+	# >>> RMS = fastRMS(X,scales)
+    # >>> qs = arange(-5,5.1,1.0)
+    # >>> loglog(scales,compFq(RMS,qs),'.-')
 
     """
     out = zeros((rms.shape[0], len(qs)), 'f8')
