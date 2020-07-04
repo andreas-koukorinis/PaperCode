@@ -4,9 +4,15 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 import scipy.misc as misc
+import scipy.special as special
 import scipy.stats as stats
 import scipy.optimize as optimize
 
+
+try:
+    logsumexp = misc.logsumexp
+except AttributeError:
+    logsumexp = special.logsumexp
 
 def z2gh(z, A, B, g, h, c=0.8):
     """
@@ -56,7 +62,7 @@ def rgh(n, A, B, g, h, c=0.8):
     :param c:
     :return:
     """
-    return z2gh(stats.random.rvs(size=n), A, B, g, h, c)
+    return z2gh(stats.norm.rvs(size=n), A, B, g, h, c)
 
 
 # noinspection PyBroadException
@@ -237,7 +243,7 @@ def estimate_mcmc(x, N, theta0, Sigma0, get_log_prior=improper_uniform_log_densi
             M = sd_const * (theta_mom2 - np.outer(theta_bar, theta_bar.T) + epsilon * np.eye(4))
             C = np.linalg.cholesky(M).T
 
-        theta_prop = theta + np.dot(C, stats.norm_rvs(size=4))
+        theta_prop = theta + np.dot(C, stats.norm.rvs(size=4))
         log_prior_prop = get_log_prior(theta_prop)
 
         if log_prior_prop > -np.inf:
@@ -259,7 +265,7 @@ def estimate_mcmc(x, N, theta0, Sigma0, get_log_prior=improper_uniform_log_densi
         output[-avgParam:, 2].mean(),
         output[-avgParam:, 3].mean(),
     )
-    resDict = dict(zip["loc", "scale", "g", "h"], [loc, scale, g, h])
+    resDict = dict(zip(["loc", "scale", "g", "h"], [loc, scale, g, h]))
 
     return output, resDict
 
@@ -360,7 +366,7 @@ def estimate_fdsa(
 
         estimates[t + 2, :4] = theta
 
-        estimates[t + 2, 4] = np.log(2) - misc.logsumexp([hatL1, hatL2])  ## log of mean likelihood estimate
+        estimates[t + 2, 4] = np.log(2) - logsumexp([hatL1, hatL2])  ## log of mean likelihood estimate
 
     avgParam = 10
     loc, scale, g, h, logLikelihood = (
@@ -394,7 +400,7 @@ def orderstats(n, indices):
     :return: a vector of order statistics equal in length to \code{orderstats}
     """
     p = len(indices)
-    kk = np.array([0] + list(stats) + [n + 1])
+    kk = np.array([0] + list(indices) + [n + 1])
 
     shape = kk[1:] - kk[:-1]
     w = stats.gamma.rvs(shape, size=p + 1)
@@ -426,7 +432,7 @@ def momEstimates(octiles):
 
 def abc_batch(sobs, priorSims, simStats, M, var=None):
     summaries = np.apply_along_axis(simStats, 1, priorSims).T
-    if var == None:
+    if var is None:
         var = np.var(summaries, axis=1, ddof=1)
 
     d = np.sum((summaries - np.expand_dims(sobs, axis=1)) ** 2 / np.expand_dims(var, axis=1), axis=0)
@@ -493,7 +499,7 @@ def estimateABC(x, N, rprior, M, statsType, batchSize=1000, logB=False):
         last_batch_size = N % batchSize
         if last_batch_size == 0:
             last_batch_size = batchSize
-        samp, var = abc_batch(sobs, rprior(batchSize), simStats, N)
+        samp, var = abc_batch(sobs, rprior(batchSize), simStats, M)
         next_batch_size = batchSize
 
         for b in range(2, nBatches + 1):
@@ -513,7 +519,7 @@ def estimateABC(x, N, rprior, M, statsType, batchSize=1000, logB=False):
         samp[:, 4].mean(),
     )
 
-    resDict = dict(zip(["loc", "scale", "g", h], [loc, scale, g, h]))
+    resDict = dict(zip(["loc", "scale", "g", "h"], [loc, scale, g, h]))
 
     return samp, resDict
 
