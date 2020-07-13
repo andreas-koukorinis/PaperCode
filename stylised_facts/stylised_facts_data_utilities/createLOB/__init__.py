@@ -49,6 +49,12 @@ bmrg_tickers = sorted([bmrg_trades[idx].split('_t')[0] for idx, _ in enumerate(b
 #           vm : int(), threshold for volume
 #       '''
 class Clocks(object):
+    """
+    df: data frame that contains all the original data
+    then you enter the string name for price, volume and dollar volume as well as how many ticks of each clock to move
+    'MicroPrice', 'TradeSize', 'DollarVolumeTraded' - these are the 3 names
+    returns all the various components.
+    """
 
     def __init__(self, df, price_column, volume_column, dv_column, mticks, vticks, dvticks):
         self.df = df
