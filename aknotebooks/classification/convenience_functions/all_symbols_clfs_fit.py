@@ -59,58 +59,6 @@ class DataLoader(object):
         return os.path.splitext(file_[numb_])[0]
 
 
-class MarketFeatures(object):
-    # a class to be expanded that uses features for base case -market based only-indicators/features
-    """"Requires:
-    a dataframe that has TradedPrice And Volume columns
-    symbol - A stock symbol on which to form a strategy on.
-    short_window - Lookback period for short moving average.
-    long_window - Lookback period for long moving average.
-    """
-
-    def __init__(self, df):
-        #         self.ticker = ticker
-        self.df = df
-
-    def load_data(self):
-        pass
-
-    def ma_spread(self, short_window=5, long_window=20):
-        # function that produces the MA spread, which can be used on its own or as an input for MACD
-        short_rolling_px = self.df['TradedPrice'].rolling(window=short_window).mean()
-        long_rolling_px = self.df['TradedPrice'].rolling(window=long_window).mean()
-        px_name = "_".join(('px_indx', str(short_window), str(long_window)))
-        self.df[px_name] = long_rolling_px - short_rolling_px
-        return self.df
-
-    def ma_spread_duration(self, short_window=5, long_window=20):
-        # function that produces the MA spread, which can be used on its own or as an input for MACD
-        short_rolling_px = self.df['Duration'].rolling(window=short_window).mean()
-        long_rolling_px = self.df['Duration'].rolling(window=long_window).mean()
-        dur_name = "_".join(('dur_indx', str(short_window), str(long_window)))
-        self.df[dur_name] = long_rolling_px - short_rolling_px
-        return self.df
-
-    def obv_calc(self):
-        # on balance volume indicator
-        self.df['SignedVolume'] = self.df['Volume'] * np.sign(self.df['TradedPrice'].diff()).cumsum()
-        self.df['SignedVolume'].iat[1] = 0
-        self.df['OBV'] = self.df['SignedVolume']  # .cumsum()
-        self.df = self.df.drop(columns=['SignedVolume'])
-        return self.df
-
-    def chaikin_mf(self, period=5):
-        # Chaikin money flow indicator
-        self.df["MF Multiplier"] = (self.df['TradedPrice'] - (self.df['TradedPrice'].expanding(period).min()) \
-                                    - (self.df['TradedPrice'].expanding(period).max() \
-                                       - self.df['TradedPrice'])) / (
-                                           self.df['TradedPrice'].expanding(period).max() - self.df[ \
-                                       'TradedPrice'].expanding(period).min())
-        self.df["MF Volume"] = self.df['MF Multiplier'] * self.df['Volume']
-        self.df['CMF_' + str(period)] = self.df['MF Volume'].sum() / self.df["Volume"].rolling(period).sum()
-        self.df = self.df.drop(columns=['MF Multiplier', 'MF Volume'])
-        return self.df
-
 
 class FitModels(object):
 
@@ -211,8 +159,8 @@ if __name__ == '__main__':
     #   data_dir: main directory , data_only_drive: the big drive where everything is saved
     # data only dir: main drive that has the
 
-    data_dir = os.getenv('FINANCE_DATA')
-    data_only_drive = '/mnt/usb-Seagate_Expansion_Desk_NA8XEHR6-0:0-part2'  # external date only drive
+    data_dir = '/media/ak/DataOnly/Data'
+    data_only_drive = '/mnt/u/media/ak/DataOnlysb-Seagate_Expansion_Desk_NA8XEHR6-0:0-part2'  # external date only drive
 
     # this is the central location for all the features/models/predictions
     features_models = os.path.join(data_dir, 'features_models')
@@ -252,7 +200,7 @@ if __name__ == '__main__':
 
     for symbol in good_symbols:  # for all symbols
         datacls = DataLoader(path_main=data_dir, ticker=symbol)  # testpcd
-        print symbol
+        print(symbol)
         symbol_labels_path = os.path.join(labels_path, symbol, 'NON_DIRECTIONAL')
         symbol_features_path = os.path.join(features_path, symbol, 'MODEL_BASED')
         hmm_models_dates_list = os.listdir(
@@ -293,7 +241,7 @@ if __name__ == '__main__':
                 else:
                     # otherwise go into that location and pull out all the various files you are working with
                     for idx, file_locs in enumerate(oos_file_location):
-                        print idx
+                        print(idx)
                         oos_label_date_no = file_locs[0].split("/")[-1].split(".")[0] # strip out the date- will be used later
                         fit_model_sav_loc = os.path.join(fitted_model_symbol_path, oos_label_date_no)
                         symbol_model_dates[k] = oos_label_date_no

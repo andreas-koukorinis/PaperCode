@@ -72,7 +72,7 @@ Paths
 hardDrivesLoc = '/media/ak/'
 dataOnlyDrive = '/media/ak/DataOnly'  # external date only drive
 ext_drive_loc = '/media/ak/My Passport/Experiment Data/'
-data_dir = os.getenv('FINANCE_DATA')  # internal folder with finance data
+
 #  input drive
 inputDrive = hardDrivesLoc
 
