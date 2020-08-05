@@ -13,7 +13,6 @@ from scipy.special import gamma
 
 from collections import defaultdict
 
-import self as self
 from tqdm import tqdm
 
 '''
