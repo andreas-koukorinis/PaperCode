@@ -19,27 +19,27 @@ from tqdm import tqdm
 Locations
 '''
 
-extHD = '/media/ak/My Passport/'
-extHdData = "".join((extHD, 'Data'))
-extHdExpData = "".join((extHD, 'Experiment Data'))  # ['features', 'labels', 'metrics', 'models']
-extHdFutures = "".join((extHD, 'Barket Data/raw bloomberg data'))  # futures
-futuresSymbols = []
-cleanLOBFolder = "/".join((extHdExpData, 'CleanLOBData'))
-barketData = '/media/ak/My Passport/Barket Data/'
+
 #
-targetDrive = barketData
-bmrg_folders = [s for s in os.listdir(targetDrive) if s.endswith('Comdty')]
-bmrg_trades = sorted([s for s in os.listdir(targetDrive) if s.endswith('y_trades')])
-bmrg_quotes = sorted([s for s in os.listdir(targetDrive) if s.endswith('y_quotes')])
-bmrg_tickers = sorted([bmrg_trades[idx].split('_t')[0] for idx, _ in enumerate(bmrg_trades)])
+# extHD = '/media/ak/My Passport/'
+# extHdData = "".join((extHD, 'Data'))
+# extHdExpData = "".join((extHD, 'Experiment Data'))  # ['features', 'labels', 'metrics', 'models']
+# extHdFutures = "".join((extHD, 'Barket Data/raw bloomberg data'))  # futures
+# futuresSymbols = []
+# cleanLOBFolder = "/".join((extHdExpData, 'CleanLOBData'))
+# barketData = '/media/ak/My Passport/Barket Data/'
+# #
+# targetDrive = barketData
+# bmrg_folders = [s for s in os.listdir(targetDrive) if s.endswith('Comdty')]
+# bmrg_trades = sorted([s for s in os.listdir(targetDrive) if s.endswith('y_trades')])
+# bmrg_quotes = sorted([s for s in os.listdir(targetDrive) if s.endswith('y_quotes')])
+# bmrg_tickers = sorted([bmrg_trades[idx].split('_t')[0] for idx, _ in enumerate(bmrg_trades)])
 
 
 # '''
 #
 #   class to compute all the various quantities needed for the Limit Order Book
-#   Tick, Volume, DV Bars calculationsyeah
-#   butfairr u f''
-#
+#   Tick, Volume, DV Bars calculations
 #           args
 #           df: pd.DataFrame()
 #           price_column: name for price data
@@ -310,7 +310,7 @@ def formatLOB(LOB):
     LOB['milliSeconds'] = [(((x.hour * 60 + x.minute) * 60 + x.second) * 1000) for x in LOB['TimeStamp']]
     LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
     LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
-                LOB.AskSize + LOB.BidSize)  # weighted mid price
+            LOB.AskSize + LOB.BidSize)  # weighted mid price
     LOB['TradeSize'] = LOB.TradeVolume
 
     return LOB
@@ -331,7 +331,7 @@ def calcLOB(LOB):
     LOB['BidOffer'] = LOB.BestAsk - LOB.BestBid
     LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
     LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
-                LOB.AskSize + LOB.BidSize)  # weighted mid price
+            LOB.AskSize + LOB.BidSize)  # weighted mid price
     LOB['MicroPricePctChange'] = LOB['MicroPrice'].pct_change()
     LOB['FwdMPChange_1'] = LOB.MicroPricePctChange.shift(1)
     LOB['FwdMPChange_5'] = LOB.MicroPricePctChange.shift(5)
@@ -340,7 +340,7 @@ def calcLOB(LOB):
     return LOB
 
 
-def storeCleanLOB(cleanLOB, targetFolder, symbolID, symbolsFolder=bmrg_folders):
+def storeCleanLOB(cleanLOB, targetFolder, symbolID, symbolsFolder=None):
     """
     meant to store the file into a hard drive
     :param cleanLOB: a clean LOB to be stored
@@ -350,14 +350,69 @@ def storeCleanLOB(cleanLOB, targetFolder, symbolID, symbolsFolder=bmrg_folders):
     :return: stores the file
     """
     symbol = symbolsFolder[symbolID].split("_")[0]  # pick the right symbol
-    targetFolder = cleanLOBFolder
+    targetFolder = None
     cleanLOBDate = str(pd.to_datetime(cleanLOB.QuoteTime[0]).date())  # pick the right date
     cleanLOBDateFileName = "_".join(('LOB', str(symbol), cleanLOBDate + ".csv"))
-    cleanLOBFileLoc = "/".join((cleanLOBFolder, symbol, cleanLOBDateFileName))
+    cleanLOBFileLoc = "/".join((targetFolder, symbol, cleanLOBDateFileName))
     return cleanLOB.to_csv(cleanLOBFileLoc)
 
 
+def formatETFlob(df):
+    # function to clean up the old ETF files and produces the cleaned up LOB
+    # broadly LOB variables are in sync with every the rest of the file, but may need cleaning up
+    dfLOB = pd.DataFrame()
+    dfLOB['MicroPrice'] = (df['bid'] * df['l1_bid_size'] + df['ask'] * df['l1_ask_size']) / (
+            df['l1_bid_size'] + df['l1_ask_size'])
+    dfLOB['TradePrice'] = df['price']
+
+    dfLOB['BidSize'] = df['l1_bid_size']
+    dfLOB['AskSize'] = df['l1_ask_size']
+    dfLOB['milliSeconds'] = df['millis']
+    dfLOB['bidAskSpread'] = df['ask'] - df['bid']
+    dfLOB['MicroPriceReturns'] = dfLOB['MicroPrice'].pct_change()
+    dfLOB['L1Imbalance'] = (df['bid'] * df['l1_bid_size'] - df['ask'] * df['l1_ask_size']) / (
+            df['l1_bid_size'] + df['l1_ask_size'])
+    dfLOB['TradeSize'] = df['volume']
+    dfLOB['DollarVolume'] = df['volume'] * df['price']
+    dfLOB['ticks'] = np.sign(df['price'] - df['price'].shift(1))
+    dfLOB['ticksAdj'] = dfLOB['ticks'].replace(to_replace=0, method='ffill')
+    try:
+        dfLOB['Duration'] = df['millis'].diff().values
+        dfLOB['BidPrice'] = df['bid']
+        dfLOB['AskPrice'] = df['ask']
+    except(ModuleNotFoundError, KeyError):
+        dfLOB['Duration'] = df['Duration']
+        dfLOB['BidPrice'] = df['BidPrice']
+        dfLOB['AskPrice'] = df['AskPrice']
+    dfLOB = dfLOB.dropna()
+    return dfLOB
+
+
+def recomputeETFLOB(df):
+    # redundant to compute things after we produce the ETF LOB
+    dfLOB = pd.DataFrame()
+    dfLOB['MicroPrice'] = (df['BidPrice'] * df['BidSize'] + df['AskPrice'] * df['AskSize']) / (
+            df['BidSize'] + df['AskSize'])
+    dfLOB['MicroPriceReturns'] = dfLOB['MicroPrice'].pct_change()
+    dfLOB['DollarVolume'] = df['TradeSize'] * df['TradePrice']
+    dfLOB['milliSeconds'] = df['milliSeconds']
+    dfLOB['Duration'] = dfLOB['milliSeconds'].diff()
+    dfLOB['L1Imbalance'] = (df['BidPrice'] * df['BidSize'] - df['AskPrice'] * df['AskSize']) / (
+            df['BidSize'] + df['AskSize'])
+    dfLOB['bidAskSpread'] = df['AskPrice'] - df['BidPrice']
+    dfLOB['ticks'] = np.sign(df['TradePrice'] - df['TradePrice'].shift(1))
+    dfLOB['ticksAdj'] = dfLOB['ticks'].replace(to_replace=0, method='ffill')
+    dfLOB['TradePrice'] = df['TradePrice']
+    dfLOB['TradeSize'] = df['TradeSize']
+    dfLOB['BidSize'] = df['BidSize']
+    dfLOB['AskSize'] = df['AskSize']
+    dfLOB['BidPrice'] = df['BidPrice']
+    dfLOB['AskPrice'] = df['AskPrice']
+    return dfLOB
+
+
 class Volestim(object):
+
     def __init__(self, df, clean=True, window=30, trading_periods=252):
         '''
         realised volatility estimation using different methodologies
@@ -519,9 +574,8 @@ class Volestim(object):
         else:
             return result
 
-
     @staticmethod
-    def tripower_volatility(dframe, columnName,rollingWindow=50):
+    def tripower_volatility(dframe, columnName, rollingWindow=50):
         """
         Realized tripower volatility (e.g. Barndorff-Nielsen, Shephard, and Winkel (2006))
         """
@@ -531,7 +585,7 @@ class Volestim(object):
         return xi * z.rolling(window=rollingWindow).sum()
 
     @staticmethod
-    def shortest_half(dframe, columnName,rollingWindow=50):
+    def shortest_half(dframe, columnName, rollingWindow=50):
         """
         Shortest-half scale estimator (Rousseeuw and Leroy, 1998)
         """
@@ -544,9 +598,8 @@ class Volestim(object):
             sh = 0.7413 * np.min(xs[h - 1:] - xs[:h])
         return sh
 
-
     @staticmethod
-    def bipower_variation(dframe, columnName,rollingWindow=50):
+    def bipower_variation(dframe, columnName, rollingWindow=50):
         '''
         Bipower Variation (BV) is the sum of the product of absolute time series returns
         :param column: price column
