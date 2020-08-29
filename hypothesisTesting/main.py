@@ -33,7 +33,7 @@ import functools
 import numpy as np
 import sklearn
 from sklearn import model_selection
-import torch
+
 
 import ds3_support as ds3s
 from ds3_support import as_tensors, LazyKernel, pil_grid
@@ -56,6 +56,8 @@ ActivityClockDataList = os.listdir(ActivityCLockData)
 
 symbols =['FB1','JB1','FV1','G_1']
 # Press the green button in the gutter to run the script.
+
+
 if __name__ == '__main__':
     symbol1 = symbols[1]
     Symbol1ClocksData = np.sort([s for s in os.listdir(ActivityCLockData) if 'Clocks' in s and (str(symbol1)) in s])
