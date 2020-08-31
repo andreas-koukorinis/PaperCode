@@ -1,31 +1,45 @@
-import os
-import pandas as pd
-import pickle
-import numpy as np
 from shogun import *
+import scipy
+from scipy.stats import norm, laplace
 import numpy as np
 import matplotlib.pyplot as plt
 
-import random
 
-import time
-import ksd
-import mmd
-import shogunMMDutils as mmdutils
-
-'''
-main piece of code to do sample comparison using Shogun
-
-'''
+# examples. will need refactoring
 
 
-def do_test_compute_values():
-    # this is not necessary as bootstrapping is the default
-    mmd.set_null_approximation_method(NAM_PERMUTATION)
-    mmd.set_statistic_type(ST_BIASED_FULL)
+def sample_gaussian_vs_laplace(n=220, mu=0.0, sigma2=1, b=np.sqrt(0.5)):
+    '''
+    use scipy to generate two distributions. in our case it is just laplace and normal
+    '''
+    X = norm.rvs(size=n, loc=mu, scale=sigma2)
+    Y = laplace.rvs(size=n, loc=mu, scale=b)
 
-    # to reduce runtime, should be larger practice
-    mmd.set_num_null_samples(100)
+    return X, Y
+
+
+def plot_alt_vs_null(alt_samples=None, null_samples=None, alpha=None):
+    plt.figure(figsize=(18, 5))
+
+    plt.subplot(131)
+    plt.hist(null_samples, 50, color='blue')
+    plt.title('Null distribution')
+    plt.subplot(132)
+    plt.title('Alternative distribution')
+    plt.hist(alt_samples, 50, color='green')
+
+    plt.subplot(133)
+    plt.hist(null_samples, 50, color='blue')
+    plt.hist(alt_samples, 50, color='green', alpha=0.5)
+    plt.title('Null and alternative distriution')
+
+    # find (1-alpha) element of null distribution
+    null_samples_sorted = np.sort(null_samples)
+    quantile_idx = int(num_samples * (1 - alpha))
+    quantile = null_samples_sorted[quantile_idx]
+    plt.axvline(x=quantile, ymin=0, ymax=100, color='red',
+                label=str(int(round((1 - alpha) * 100))) + '% quantile of null')
+    _ = plt.legend()
 
 
 class SignificanceResultsMMD(object):
@@ -111,33 +125,3 @@ class SignificanceResultsMMD(object):
         return [biased_statistic, unbiased_statistic]
 
 
-if __name__ == '__main__':
-    print('unit testing')
-
-    mu = 0.0
-    sigma2 = 1
-    b = np.sqrt(0.5)
-    n = 22000
-    X, Y = mmdutils.sample_gaussian_vs_laplace(n, mu, sigma2, b)
-    print("Gaussian vs. Laplace")
-    print("Sample means: %.2f vs %.2f" % (np.mean(X), np.mean(Y)))
-    print("Samples variances: %.2f vs %.2f" % (np.var(X), np.var(Y)))
-
-    def shogun_features(x, y):
-        # create shogun features
-        return [RealFeatures(x.reshape(1, len(x))) , RealFeatures(y.reshape(1, len(y)))]
-
-    feat_p,feat_q = shogun_features(x=X, y= Y)
-
-    kernel_width = 1
-    kernel = GaussianKernel(10, kernel_width)
-    kernel = GaussianKernel(10, 1)
-
-    mmd = QuadraticTimeMMD(feat_p, feat_q)
-    mmd.set_kernel(kernel)
-
-    SignificanceResultsMMD.compute_the_p_value_unbiased(mmd=mmd)
-    SignificanceResultsMMD.compute_the_p_value_biased(mmd=mmd)
-
-    # print("%d x MMD_b[X,Y]^2=%.2f" % (len(x), biased_statistic))
-    # print("%d x MMD_u[X,Y]^2=%.2f" % (len(y), unbiased_statistic))
