@@ -44,14 +44,23 @@ def plot_alt_vs_null(alt_samples=None, null_samples=None, alpha=None):
 
 class SignificanceResultsMMD(object):
     # TODO: add dictionaries and or arrays so we can properly record all the data here for Latex
-    def __init__(object):
-        pass
+    def __init__(self, feat_p, feat_q):
+        self.feat_p, self.feat_q = self.shogun_features(feat_p, feat_q)
 
     @staticmethod
-    def compute_the_p_value_unbiased(mmd):
+    def shogun_features(x, y):
+        # create shogun features
+        return [RealFeatures(x.reshape(1, len(x))), RealFeatures(y.reshape(1, len(y)))]
+
+    def mmd(self):
+        return QuadraticTimeMMD(self.feat_p, self.feat_q)
+
+    @staticmethod
+    def compute_the_p_value_unbiased(mmd, kernel):
         # now show a couple of ways to compute the test
         # compute biased and unbiased test statistic (default is unbiased)
         mmd.set_statistic_type(ST_UNBIASED_FULL)
+        mmd.set_kernel(kernel)
         unbiased_statistic = mmd.compute_statistic()
 
         # compute p-value for computed test statistic
@@ -60,11 +69,12 @@ class SignificanceResultsMMD(object):
         return unbiased_statistic, p_value
 
     @staticmethod
-    def compute_the_p_value_biased(mmd):
+    def compute_the_p_value_biased(mmd, kernel):
         # now show a couple of ways to compute the test
         # compute biased and unbiased test statistic (default is unbiased)
         # returns statistic and p-value
         mmd.set_statistic_type(ST_BIASED_FULL)
+        mmd.set_kernel(kernel)
         biased_statistic = mmd.compute_statistic()
 
         # compute p-value for computed test statistic
@@ -72,12 +82,12 @@ class SignificanceResultsMMD(object):
         print("P-value of MMD value for the biased statistic %.2f is %.2f" % (biased_statistic, p_value))
         return biased_statistic, p_value
 
-    @staticmethod
-    def test_by_hand(mmd, p_value, alpha=0.05):
+    def test_by_hand(self,kernel, p_value, alpha=0.05):
         # compute threshold for rejecting H_0 for a given test power
-        mmd.set_statistic_type(ST_UNBIASED_FULL)
-        unbiased_statistic = mmd.compute_statistic()
-        threshold = mmd.compute_threshold(alpha)
+        self.mmd.set_kernel(kernel)
+        self.mmd.set_statistic_type(ST_UNBIASED_FULL)
+        unbiased_statistic = self.mmd.compute_statistic()
+        threshold = self.mmd.compute_threshold(alpha)
         print("Threshold for rejecting H0 with a test power of %.2f is %.2f" % (alpha, threshold))
 
         # performing the test by hand given the above results, note that those two are equivalent
@@ -123,5 +133,3 @@ class SignificanceResultsMMD(object):
         unbiased_statistic = quad_time_mmd.compute_statistic()
 
         return [biased_statistic, unbiased_statistic]
-
-
