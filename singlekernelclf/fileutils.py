@@ -8,7 +8,7 @@ import time
 
 # filelocations
 clean_raw_data_path = '/media/ak/DataOnly/Data/'  # has a list of symbols in here with processed data-appendix is a list of symbols
-data_path = '/media/ak/DataOnly/FinDataReal/'
+data_path = '/media/ak/DataOnly/FinDataReal/'  # this has features stored + labels stored
 labels_path = os.path.join(data_path, 'Labels')
 # list of symbols directory that has 2 files - this basically has two folders, one for HMM and one for SVM
 singleSVMmodels_path = '/media/ak/DataOnly/Data/features_models/models/'

@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 import os
 import sys
-<<<<<<< HEAD
-=======
 
 from pandas.tseries.offsets import BDay
 from hsmm_core.hmm import hmm_engine
@@ -35,11 +33,7 @@ labelling_method_params = [
 #     'trading_hours_filter': trading_hours_filter,
 # },
 {
-    'labelling_method': LabellingChoice.price_move_in_window,
-    'rolling_window': 5,
-    # Uncomment below if you want to check a price move only above a certain level
-    'updown_threshold': 0.01,
-=======
+
 ticker_labels_path = os.path.join(labels_path,ticker+'/NON_DIRECTIONAL')
 
 labelling_method_params = [{
