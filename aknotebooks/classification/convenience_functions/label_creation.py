@@ -34,7 +34,7 @@ labelling_method_params = [
 # },
 {
 
-ticker_labels_path = os.path.join(labels_path,ticker+'/NON_DIRECTIONAL')
+# ticker_labels_path = os.path.join(labels_path,ticker+'/NON_DIRECTIONAL')
 
 labelling_method_params = [{
 
@@ -46,13 +46,11 @@ labelling_method_params = [{
     'threshold_method': ThresholdMethod.arbitrary,
 }]
 
-for label_init in labelling_method_params:
-    labeller = DataLabellingSimple(label_init)
-    labeller.label_training_data(data)
-<<<<<<< HEAD
-=======
-
-keys_ = data.keys()
+# for label_init in labelling_method_params:
+#     labeller = DataLabellingSimple(label_init)
+#     labeller.label_training_data(data)
+#
+# keys_ = data.keys()
 
 for key_, _ in enumerate(keys_):
     data[keys_[key_]].to_csv(ticker_labels_path+'/'+str(keys_[key_])+'.csv', index=False)
