@@ -180,7 +180,7 @@ def getLocationsList():
                 FeatureFileLoc = os.path.join(symbolModelFeaturesDate, commonDatesFeatureFile)
                 checkDir(FeatureFileLoc)
                 checkDir(labelsCommonFileLoc)
-                conditions = [os.path.exists(FeatureFileLoc), os.path.exists(labelsCommonFileLoc)]
+                conditions hhhxists(labelsCommonFileLoc)]
                 print(conditions)
                 if all(conditions):
                     print('all good on Date:', commonDate)
