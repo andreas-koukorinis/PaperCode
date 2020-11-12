@@ -267,6 +267,18 @@ def rawLOBFIle(futuresFolder, symbolsFolder, symbolID, fileID):
     return rawLOBFile
 
 
+def rawLOB_file_non_id(Folder, filename, fileID):
+    ''' read the appropriate data and produce a raw LOB file
+    futuresFolder: where the extHDFutures folder is
+    symbolID: which symbol to pick up
+    symbolsFolder: folder with symbols. you use symbolID as an index in that folder
+    '''
+    listDatesFiles = os.listdir(Folder)
+    rawLOBFile = pd.read_csv(os.path.join((Folder, listDatesFiles[fileID])))
+
+    return rawLOBFile
+
+
 def createLOB(rawLOBFile):
     '''
     create a clean LOB based on the Bloomberg Files that I got from Barket.
@@ -362,6 +374,8 @@ def formatETFlob(df):
     # broadly LOB variables are in sync with every the rest of the file, but may need cleaning up
     dfLOB = pd.DataFrame()
     dfLOB['MicroPrice'] = (df['bid'] * df['l1_bid_size'] + df['ask'] * df['l1_ask_size']) / (
+            df['l1_bid_size'] + df['l1_ask_size'])
+    dfLOB['BookPressure'] = (df['bid'] * df['l1_bid_size'] - df['ask'] * df['l1_ask_size']) / (
             df['l1_bid_size'] + df['l1_ask_size'])
     dfLOB['TradePrice'] = df['price']
 
