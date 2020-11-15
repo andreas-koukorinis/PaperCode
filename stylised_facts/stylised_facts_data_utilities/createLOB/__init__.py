@@ -344,6 +344,9 @@ def calcLOB(LOB):
     LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
     LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
             LOB.AskSize + LOB.BidSize)  # weighted mid price
+    LOB['BookPressure'] = (LOB.BestAsk * LOB.AskSize - LOB.BestBid * LOB.BidSize) / (
+            LOB.AskSize + LOB.BidSize)  # weighted mid price
+    LOB['AskBidSizeRatio'] = (LOB.BestAsk / LOB.BidSize) -1
     LOB['MicroPricePctChange'] = LOB['MicroPrice'].pct_change()
     LOB['FwdMPChange_1'] = LOB.MicroPricePctChange.shift(1)
     LOB['FwdMPChange_5'] = LOB.MicroPricePctChange.shift(5)
