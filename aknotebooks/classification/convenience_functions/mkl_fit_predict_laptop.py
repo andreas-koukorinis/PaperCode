@@ -37,7 +37,7 @@ def forwardDates(idxKey, commonLocs):
 if __name__ == '__main__':
 
     # paths
-    extPath = '/media/ak/My Passport/Experiment Data'
+    extPath = '/media/ak/My Passport/ExperimentData'
     featuresPath = "/".join((extPath, 'features'))
     labelsPath = "/".join((extPath, 'labels'))
     MKLPath = "/".join((extPath, 'MKLExpPath'))

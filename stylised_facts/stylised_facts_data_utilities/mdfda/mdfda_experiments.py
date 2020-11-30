@@ -44,5 +44,5 @@ if __name__ == '__main__':
         exampleLOB = createLOB.calcLOB(createLOB.formatLOB(createLOB.createLOB(raw_file)))
         lob_dict[idx] = exampleLOB
         allLOB = pd.concat(list(lob_dict.values()), axis=0, keys=list(lob_dict.keys()))
-    allLOB_File = "".join(('allLOB' + str(bmrg_folders[0]), '.pkl'))
+    allLOB_File = "".join(('allLOB' + str(bmrg_folders[0])   , '.pkl'))
     pkl.dump(allLOB, open("/".join((extPath, allLOB_File)), "wb"))

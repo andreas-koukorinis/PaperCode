@@ -1,15 +1,16 @@
-
 import pandas as pd
 import numpy as np
 import datetime as dt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import precision_recall_fscore_support
+
 sc = StandardScaler()
 import os
 import pickle
 import fnmatch
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score, precision_score
+
 
 ##useful function
 
@@ -46,6 +47,7 @@ def prec_recall_report(y_true, y_predict):
     report.loc['Avg/Total', :] = precision_recall_fscore_support(y_true, y_predict, average='weighted')
     report.loc['Avg/Total', 'Support'] = report['Support'].sum()
     return report
+
 
 class MarketFeatures(object):
     # a class to be expanded that uses features for base case -market based only-indicators/features
@@ -98,6 +100,7 @@ class MarketFeatures(object):
         self.df['CMF_' + str(period)] = self.df['MF Volume'].sum() / self.df["Volume"].rolling(period).sum()
         self.df = self.df.drop(columns=['MF Multiplier', 'MF Volume'])
         return self.df
+
 
 data_dir = os.getenv('FINANCE_DATA')  # main directory referenced in all the code\n",
 data_only_drive = '/mnt/usb-Seagate_Expansion_Desk_NA8XEHR6-0:0-part2'  # external date only drive\n",
