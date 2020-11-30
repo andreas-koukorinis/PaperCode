@@ -328,6 +328,37 @@ def formatLOB(LOB):
     return LOB
 
 
+def createLOBtwoInputs(dfQuotes, dfTrades):
+    """
+    create a clean LOB by entering two dataframes, one for quotes and one for trades.
+    variation of create LOB function
+    dfQuotes: input of quotes
+    dfTrades: input of trades
+    """
+    dfTrades.loc[:, 'TradeSize'] = dfTrades['size']
+    dfQuotes.loc[:, 'TradeTime'] = pd.to_datetime(dfQuotes.time).values
+    dfTrades.loc[:, 'TradeTime'] = pd.to_datetime(dfTrades.time).values
+    dfTrades.loc[:, 'TradeId'] = dfTrades.index.values
+    dfTrades.loc[:, 'TradePrice'] = dfTrades.value.values
+    dfTrades = dfTrades.dropna().fillna("ffill").sort_values('TradeTime')
+    dfQuotes = dfQuotes.dropna().fillna("ffill").sort_values('TradeTime')
+    LOB = pd.DataFrame(pd.merge_asof(dfQuotes, dfTrades, on='TradeTime', allow_exact_matches=True))
+    LOB = LOB.rename(
+        columns={'Unnamed: 0_y': 'AskQuoteId', 'Unnamed: 0_x': 'BidQuoteId', 'value_x': 'BestBid', 'value_y': 'BestAsk',
+                 'size_x': 'BidSize', 'size_y': 'AskSize', 'time_x': 'QuoteTime', 'time': 'TradedTime',
+                 'TradeSize': 'TradeVolume', 'Unnamed: 0': 'TradeId'})
+    LOB.BidSize = LOB['BidSize'].replace(0, 1)
+    LOB.AskSize = LOB['AskSize'].replace(0, 1)
+    LOB['TimeStamp'] = pd.to_datetime(LOB.TradeTime).dt.time
+    LOB['TradeVolume'] = LOB['TradeVolume'].fillna(0)
+    LOB['milliSeconds'] = [(((x.hour * 60 + x.minute) * 60 + x.second) * 1000) for x in LOB['TimeStamp']]
+    LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
+    LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
+            LOB.AskSize + LOB.BidSize)  #
+
+    return pd.DataFrame(LOB)
+
+
 def calcLOB(LOB):
     '''
 
@@ -344,9 +375,9 @@ def calcLOB(LOB):
     LOB['DollarVolume'] = LOB.TradePrice * LOB.TradeVolume
     LOB['MicroPrice'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
             LOB.AskSize + LOB.BidSize)  # weighted mid price
-    LOB['BookPressure'] = (LOB.BestAsk * LOB.AskSize - LOB.BestBid * LOB.BidSize) / (
-            LOB.AskSize + LOB.BidSize)  # weighted mid price
-    LOB['AskBidSizeRatio'] = (LOB.BestAsk / LOB.BidSize) -1
+    LOB['L1PriceImbalance'] = (LOB.BestAsk * LOB.AskSize - LOB.BestBid * LOB.BidSize) / (
+            LOB.AskSize + LOB.BidSize)
+    LOB['L1SizeRatio'] = (LOB.AskSize / LOB.BidSize)
     LOB['MicroPricePctChange'] = LOB['MicroPrice'].pct_change()
     LOB['FwdMPChange_1'] = LOB.MicroPricePctChange.shift(1)
     LOB['FwdMPChange_5'] = LOB.MicroPricePctChange.shift(5)
