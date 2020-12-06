@@ -152,7 +152,7 @@ for ticker in symbols_ftse: #ticker = 'VOD' ##load data
         # SVC is more expensive so we do a lower number of CV iterations:
         n_jobs=-1
         cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
-        an
+
         logreg = linear_model.LogisticRegression(C=1e5)
         SGD_clf = SGDClassifier(loss="modified_huber", penalty="elasticnet", n_jobs = -1,learning_rate = 'optimal', n_iter = 2000, alpha = 0.00001, fit_intercept=True)
 
