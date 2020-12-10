@@ -163,11 +163,12 @@ if __name__ == "__main__":
     # just pick symbols I have joint locations
     jointLocsSymbols = list(np.unique([f.split("_")[0] for f in os.listdir(jointLocationsPickleFolder)]))
 
-    symbol = 'BARC.L'
+    symbol = 'BATS.L'
     best_svc_dict = defaultdict(dict)
+    forward_dates_dict =  defaultdict(dict)
     if symbol in jointLocsSymbols:
         print('ok to go')
-        alternate_label_idx = 2
+        alternate_label_idx = 1
         # pick a label indexprint(jointLocsSymbols[symbol_idx], ' and labels ',
         # labels_pickle_files[alternate_label_idx])
         symbol_idx = jointLocsSymbols.index(symbol)  # dont particularly need this!
@@ -204,5 +205,19 @@ if __name__ == "__main__":
                 X_train = MinMaxScaler().fit_transform(df_final)
                 models_cls = clfutils.FitModels(X_train, y_labels_train)
                 best_svc_dict[symbol][joint_key_date] = {'SVC': models_cls.best_svc_clf()}
+                forward_dates_dict[symbol][joint_key_date] = data_cls.forwardDates(joint_keys, joint_key_date)
+
+            pickle_out_filename = os.path.join(dataDrive, "_".join(
+                (symbol, labels_pickle_files[alternate_label_idx], 'SingleKernelSVC.pkl')))
+            pickle_out = open(pickle_out_filename, 'wb')
+            pickle.dump(best_svc_dict, pickle_out)
+            pickle_out.close()
+
+            forward_dates_dict_filename = os.path.join(dataDrive, "_".join(
+                (symbol, labels_pickle_files[alternate_label_idx],joint_key_date ,'ForwardDates.pkl')))
+            forward_dates_dict_out = open(forward_dates_dict_filename, 'wb')
+            pickle.dump(best_svc_dict, forward_dates_dict_out)
+            forward_dates_dict_out.close()
+
 
 
