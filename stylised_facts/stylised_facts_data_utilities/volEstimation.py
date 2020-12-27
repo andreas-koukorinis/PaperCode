@@ -255,10 +255,6 @@ if __name__ == '__main__':
             print(pklOHLCFile)
             combinedDF = combinedDF.append(pickle.load(open(pklOHLCFile, "rb")))
 
-        combinedDFLoc = "/".join((OHLCData,str(symbol)+'CombinedDF.csv'))
-        combinedDF.to_csv(combinedDFLoc, index=False, header=True)
-        print(combinedDF.head(3))
-        print('has been saved in :', combinedDFLoc)
         #
         # PlotCones(estiChoice=1, ohlcDF=combinedDF, symbol=symbol)
         #
