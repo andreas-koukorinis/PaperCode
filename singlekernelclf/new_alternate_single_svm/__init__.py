@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import precision_recall_fscore_support
+
 import fileutils as fileutils
 import gc
 import psutil
@@ -58,6 +57,12 @@ def hmm_features_df(features_tuple):
                       features_tuple[2], features_tuple[3]], axis=1, sort=False)
 
 
+def forwardDates(list_of_keys, current_date):
+    """ return all the forward looking dates for each idxKey we use for training"""
+    lookAheadKeys = sorted(i for i in list_of_keys if i > current_date)
+    return lookAheadKeys
+
+
 class AlternateLabelFeaturesLoader(object):
     """
     takes in a main path, a symbol, an alternate label index (from 0 to 4) and returns, the pickled dict file name
@@ -77,14 +82,14 @@ class AlternateLabelFeaturesLoader(object):
     def return_pickled_dict(self):
         # returns the filename of the joint features and labels file
         # the features file is a dictionary that has keys
-#         if self.symbol in self.jointLocsSymbols:
+        #         if self.symbol in self.jointLocsSymbols:
         if self.alternate_label_idx < 4:
             pickle_in_filename_local = os.path.join(self.jointLocationsPickleFolder, "_".join(
                 (self.symbol, self.LabelsAlternateName[self.alternate_label_idx], 'FeaturesLocations.pkl')))
         else:
             print('Error in the alternate label index: value between 0 and 4')
-#         else:
-#             print('Symbol is not in the folder')
+        #         else:
+        #             print('Symbol is not in the folder')
         return pickle_in_filename_local
 
     @staticmethod
@@ -98,12 +103,6 @@ class AlternateLabelFeaturesLoader(object):
     def joint_loc_pickle_keys(inputFile):
         # returns keys of joint locations from labels and features
         return list(AlternateLabelFeaturesLoader.load_pickled_in_filename(inputFile).keys())
-
-    @staticmethod
-    def forwardDates(list_of_keys, current_date):
-        """ return all the forward looking dates for each idxKey we use for training"""
-        lookAheadKeys = sorted(i for i in list_of_keys if i > current_date)
-        return lookAheadKeys
 
 
 class CreateMarketFeatures(object):
@@ -163,61 +162,55 @@ if __name__ == "__main__":
     # just pick symbols I have joint locations
     jointLocsSymbols = list(np.unique([f.split("_")[0] for f in os.listdir(jointLocationsPickleFolder)]))
 
-    symbol = 'BATS.L'
+    symbol = 'RDSb.L'
     best_svc_dict = defaultdict(dict)
-    forward_dates_dict =  defaultdict(dict)
+
     if symbol in jointLocsSymbols:
         print('ok to go')
-        alternate_label_idx = 1
-        # pick a label indexprint(jointLocsSymbols[symbol_idx], ' and labels ',
-        # labels_pickle_files[alternate_label_idx])
-        symbol_idx = jointLocsSymbols.index(symbol)  # dont particularly need this!
-        print(symbol, ' and labels ', labels_pickle_files[alternate_label_idx])
-        data_cls = AlternateLabelFeaturesLoader(path_main=dataDrive, symbol=jointLocsSymbols[symbol_idx],
-                                                alternate_label_idx=alternate_label_idx,
-                                                jointLocationsPickleInput=jointLocationsPickleFolder)
-        jointLocationsDictionary = (data_cls.load_pickled_in_filename(data_cls.return_pickled_dict()))
-        joint_keys = data_cls.joint_loc_pickle_keys(data_cls.return_pickled_dict())
-        logmemoryusage("Before garbage collect")
-        gc.collect()  # continue
-        for joint_key_idx, joint_key_date in enumerate(joint_keys):
-            # this is a date - and we will enumerate through the keys
-            # getting features and labels
-            logmemoryusage("Before feature creation")
-            features, labels = ticker_features_labels(jointLocationsDictionary[joint_keys[joint_key_idx]])
-            print(joint_key_date)
-            label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
-            features_df = hmm_features_df(
-                features)  # features data-frame - this just unbundles the features into a dataframe
-            # lets get all the features in order now#
-            market_features_df = CreateMarketFeatures(
-                CreateMarketFeatures(CreateMarketFeatures(df=CreateMarketFeatures(df=labels).ma_spread_duration())
-                                     .ma_spread()).chaikin_mf()).obv_calc()  # market features dataframe
-            df_concat = pd.DataFrame(pd.concat([features_df, market_features_df], axis=1, sort='False').dropna())
-            df = df_concat[df_concat[label_name].notna()]
-            df_final = df.drop(columns=['TradedPrice', 'Duration', 'TradedTime', 'ReturnTradedPrice', \
-                                        'Volume', label_name])
-            y_labels_train = df[df.columns[df.columns.str.contains(pat='label')]].iloc[:, 0]
-            if df_final.shape[0] < 10:
-                print(' the ratio of classes is too low. try another label permutation')
-                continue
-            else:
-                X_train = MinMaxScaler().fit_transform(df_final)
-                models_cls = clfutils.FitModels(X_train, y_labels_train)
-                best_svc_dict[symbol][joint_key_date] = {'SVC': models_cls.best_svc_clf()}
-                forward_dates_dict[symbol][joint_key_date] = data_cls.forwardDates(joint_keys, joint_key_date)
+        # alternate_label_idx = 1
+        for alternate_label_idx in range(0, 4):
+            # pick a label indexprint(jointLocsSymbols[symbol_idx], ' and labels ',
+            # labels_pickle_files[alternate_label_idx])
+            symbol_idx = jointLocsSymbols.index(symbol)  # dont particularly need this!
+            print(symbol, ' and labels ', labels_pickle_files[alternate_label_idx])
+            data_cls = AlternateLabelFeaturesLoader(path_main=dataDrive, symbol=jointLocsSymbols[symbol_idx],
+                                                    alternate_label_idx=alternate_label_idx,
+                                                    jointLocationsPickleInput=jointLocationsPickleFolder)
+            jointLocationsDictionary = (data_cls.load_pickled_in_filename(data_cls.return_pickled_dict()))
+            joint_keys = data_cls.joint_loc_pickle_keys(data_cls.return_pickled_dict())
+            logmemoryusage("Before garbage collect")
+            gc.collect()  # continue
+            for joint_key_idx, joint_key_date in enumerate(joint_keys):
+                # this is a date - and we will enumerate through the keys
+                # getting features and labels
+                logmemoryusage("Before feature creation")
+                features, labels = ticker_features_labels(jointLocationsDictionary[joint_keys[joint_key_idx]])
+                print(joint_key_date)
+                label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
+                features_df = hmm_features_df(
+                    features)  # features data-frame - this just unbundles the features into a dataframe
+                # lets get all the features in order now#
+                market_features_df = CreateMarketFeatures(
+                    CreateMarketFeatures(CreateMarketFeatures(df=CreateMarketFeatures(df=labels).ma_spread_duration())
+                                         .ma_spread()).chaikin_mf()).obv_calc()  # market features dataframe
+                df_concat = pd.DataFrame(pd.concat([features_df, market_features_df], axis=1, sort='False').dropna())
+                df = df_concat[df_concat[label_name].notna()]
+                df_final = df.drop(columns=['TradedPrice', 'Duration', 'TradedTime', 'ReturnTradedPrice', \
+                                            'Volume', label_name])
+                y_labels_train = df[df.columns[df.columns.str.contains(pat='label')]].iloc[:, 0]
+                if df_final.shape[0] < 10:
+                    print(' the ratio of classes is too low. try another label permutation')
+                    continue
+                else:
+                    try:
+                        X_train = MinMaxScaler().fit_transform(df_final)
+                        models_cls = clfutils.FitModels(X_train, y_labels_train)
+                        best_svc_dict[symbol][joint_key_date] = {'SVC': models_cls.best_svc_clf()}
+                    except ValueError:
+                        continue
 
-            pickle_out_filename = os.path.join(dataDrive, "_".join(
-                (symbol, labels_pickle_files[alternate_label_idx], 'SingleKernelSVC.pkl')))
-            pickle_out = open(pickle_out_filename, 'wb')
-            pickle.dump(best_svc_dict, pickle_out)
-            pickle_out.close()
-
-            forward_dates_dict_filename = os.path.join(dataDrive, "_".join(
-                (symbol, labels_pickle_files[alternate_label_idx],joint_key_date ,'ForwardDates.pkl')))
-            forward_dates_dict_out = open(forward_dates_dict_filename, 'wb')
-            pickle.dump(best_svc_dict, forward_dates_dict_out)
-            forward_dates_dict_out.close()
-
-
-
+                pickle_out_filename = os.path.join(dataDrive, "_".join(
+                    (symbol, labels_pickle_files[alternate_label_idx], 'SingleKernelSVC.pkl')))
+                pickle_out = open(pickle_out_filename, 'wb')
+                pickle.dump(best_svc_dict, pickle_out)
+                pickle_out.close()
