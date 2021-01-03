@@ -140,7 +140,7 @@ forwardDates = [f for f in os.listdir(dataDrive) if 'ForwardDates' in f]
 svcModels = [g for g in os.listdir(dataDrive) if '_SingleKernelSVC' in g]
 
 if __name__ == "__main__":
-    symbol = 'CPI.L'
+    symbol = 'UU.L'
     # this is a list of all the models that have been fitted, format is Symbol_label_type_single_kernel_svc
     # like this: Symbol_LabelsAlternateOne_SingleKernelSVC.pkl'
     symbolSVCModels = [g for g in svcModels if str(symbol) in g]
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                 try:
                     fitted_model = svc.fit(X_fit, y_fit)
                     # now get a list of all the out of sample dates
-                    symbolForwardDates = data_cls.forwardDates(joint_keys, modelDates[modelDateIdx])
+                    symbolForwardDates = nalsvm.forwardDates(joint_keys, modelDates[modelDateIdx])
                     oos_svc_predictions = defaultdict(dict)
                     # alias to store the data : symbol, joint Date, Label Used
                     results_predict_alias = "_".join((symbol, modelDates[modelDateIdx], alternate_label))

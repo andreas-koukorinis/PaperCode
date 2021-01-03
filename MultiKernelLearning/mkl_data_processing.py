@@ -7,13 +7,55 @@ import numpy as np
 import os
 import time
 import new_alternate_single_svm as nalsvm
+import jsonpickle
 
 # file to do the data processing of clean data so we can fit models quite easily and reduce memory
 # just pick symbols I have joint locations
 jointLocsSymbols = list(np.unique([f.split("_")[0] for f in os.listdir(nalsvm.jointLocationsPickleFolder)]))
 
+from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score, precision_score, hamming_loss
+
+
+def evaluate_predictions(y_true, y_preds):
+    """
+    Performs evaluation comparison on y_true labels vs. y_pred labels
+    on a classification.
+    takes true label values and true predictions and returns a dictionary of metrics
+    """
+    accuracy = accuracy_score(y_true, y_preds)
+    precision = precision_score(y_true, y_preds, average='weighted')
+    precision_macro = precision_score(y_true, y_preds, average='macro')
+    precision_micro = precision_score(y_true, y_preds, average='micro')
+    recall = recall_score(y_true, y_preds, average='weighted')
+    f1_weighted = f1_score(y_true, y_preds, average='weighted')
+    f1_macro = f1_score(y_true, y_preds, average='macro')
+    f1_micro = f1_score(y_true, y_preds, average='micro')
+    hamming_loss_value = hamming_loss(y_true, y_preds)
+
+    metric_dict = {"accuracy": round(accuracy, 2),
+                   "precision": round(precision, 2),
+                   "recall": round(recall, 2),
+                   "f1- weighted": round(f1_weighted, 2),
+                   "f1- micro": round(f1_micro, 2),
+                   "f1- macro": round(f1_macro, 2),
+                   "Hamming Loss": round(hamming_loss_value, 2)}
+    print(f"Acc: {accuracy * 100:.2f}%")
+    print(f"Precision: {precision:.2f}")
+    print(f"Recall: {recall:.2f}")
+    print(f"F1 score weighted: {f1_weighted:.2f}")
+    print(f"F1 score macro: {f1_macro:.2f}")
+    print(f"F1 score micro: {f1_micro:.2f}")
+    print(f"Hamming Loss Value: {hamming_loss_value:.2f}")
+
+    return metric_dict
+
 
 def storage_location(symbol):
+    """
+
+    :param symbol: symbol that we have locations of Data that is clean, i.e matched labels and features
+    :return: full absolute path
+    """
     storage_location = os.path.join(nalsvm.dataDrive, 'JointLocationsAlternateDataClean', symbol)
     return storage_location
 
@@ -32,8 +74,64 @@ def cross_validation_results_location(symbol):
     return storage_location
 
 
+def model_dates_list(cross_val_location):
+    """
+    :param cross_val_location: location of cross validation files. this is an output of function cross_validation_results_location
+    :return: a sorted list of dates that can refer to when the cross-validation happened
+    """
+    pkl_files = os.listdir(cross_val_location)
+    modelDates = sorted(np.unique([pkl_files[f].split("_")[1] for f, _ in enumerate(pkl_files)]))
+    return list(sorted(modelDates))
+
+
+# results/locations etc
+def return_cross_val_symbol_path(symbol):
+    """
+    returns the path for cross validation results of a symbol for post processing
+    if the symbol in the cv_results sub-folder
+    input: symbol
+    returns: symbol_cross val path
+    """
+    symbols_available = [f for f in os.listdir(
+        '/media/ak/My Passport/Data/FinDataReal/JointLocationsAlternateDataClean/CV_Results/') if str('.L') in f]
+    if symbol in symbols_available:
+        cross_val_location = cross_validation_results_location(symbol)
+        print(cross_val_location)
+    else:
+        print('symbol not in list')
+    return cross_val_location
+
+
+def pickle_dump_obj_to_filename(destinationPath, symbol, fileName, obj):
+    """
+    Using this to dump results for a list to file
+    :param destinationPath: path where the pickle should be dumped
+    :param symbol: Symbol that should accompany the file
+    :param fileName: the specific filename you want to use, like OOSResults.pkl
+    :param obj: the object you want to pickle
+    :return: dumps an obj to file
+    """
+    pickle_out_filename = os.path.join(destinationPath, "_".join((symbol, fileName)))
+    pickle_out = open(pickle_out_filename, 'wb')
+    pickle.dump(obj, pickle_out)
+    pickle_out.close()
+    print('saved', pickle_out_filename)
+
+def jsonpickle_store_obj(obj, filename_location):
+    """
+    function to encode an object in jsonpickle and store it
+    obj: object to be encoded in jsonpickle
+    location: where to store it
+
+    """
+    obj_str = jsonpickle.encode(obj)
+    f = open(filename_location, 'w')
+    f.write(obj_str)
+    f.close()
+    print('encoded and saved in :', filename_location)
+
 if __name__ == '__main__':
-    symbol = 'CPG.L'
+    symbol = 'RDSb.L'
     storage_location = storage_location(symbol)
     if not os.path.exists(storage_location):
         os.makedirs(storage_location)

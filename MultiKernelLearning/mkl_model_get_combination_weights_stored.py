@@ -32,8 +32,7 @@ if __name__ == '__main__':
     alternate_label_idx = list(nalsvm.labels_pickle_files).index(alternate_label)
     print(alternate_label)
     # clean data location
-    oos_results_dict = OrderedDict(dict)
-    for symbol in ['ECM.L', 'SHP.L']:
+    for symbol in ['ECM.L']:
         clean_data_location = storage_location(symbol)
         print(symbol)
         # model dates list
@@ -74,39 +73,5 @@ if __name__ == '__main__':
                 # this bit may be redundant here and we can put it somewhere else
                 for sol in clf.solution:
                     print('(%d vs all): ' % sol, clf.solution[sol].weights) #dont need this loop- can make it redundant in another file
-
-                for date in forward_dates:
-                    print(date)
-                    start = time.time()
-                    nalsvm.logmemoryusage("Before garbage collect")
-                    Xte = normalization(rescale_01(torch.Tensor(pkl_file[date][0].values)))
-                    Yte = torch.Tensor(pkl_file[date][1].values)
-                    try:
-                        KLte = generators.RBF_generator(Xte, gamma=[.001, .01, .1])
-                        print('sorted out test dates bit done')
-                        nalsvm.gc.collect()
-                        y_pred = clf.predict(KLte)  # predictions
-                        y_score = clf.decision_function(KLte)  # rank
-                        # oos_svc_predictions = defaultdict(dict)
-                        accuracy = accuracy_score(Yte, y_pred)
-                        accuracy_file_name = "_".join((symbol, model_date, date,alternate_label,'OOSResult.pkl'))
-                        print('Accuracy score: %.3f' % accuracy)
-                        evaluate_predictions(Yte, y_pred)
-
-                        # average kernel as a base line
-
-                        y_preds_average = mkl_avg.predict(KLte)  # predict the output class
-                        y_scores_average = mkl_avg.decision_function(KLte)  # returns the projection on the distance vector
-                        average_accuracy = accuracy_score(Yte, y_preds_average)
-                        print ('Accuracy score: %.3f' % average_accuracy)
-                        evaluate_predictions(Yte, y_preds_average)
-                    except (ValueError, TypeError, EOFError, IndexError):
-                        continue
-
-            except (ValueError, TypeError, EOFError, IndexError):
-                # at some point for clarity we need to clean these error up.
+            except:
                 continue
-                nalsvm.gc.collect()
-                print('done too')
-                end = time.time()
-                print(f'it took {end - start} seconds!')
