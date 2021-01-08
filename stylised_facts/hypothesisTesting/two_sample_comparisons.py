@@ -12,6 +12,7 @@ import time
 import ksd
 import mmd
 import shogunMMDutils as mmdutils
+from shogun import RealFeatures
 
 '''
 main piece of code to do sample comparison using Shogun
