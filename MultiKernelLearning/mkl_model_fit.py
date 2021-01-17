@@ -32,8 +32,8 @@ if __name__ == '__main__':
     alternate_label_idx = list(nalsvm.labels_pickle_files).index(alternate_label)
     print(alternate_label)
     # clean data location
-    oos_results_dict = OrderedDict(dict)
-    for symbol in ['ECM.L', 'SHP.L']:
+
+    for symbol in ['PRU.L']:
         clean_data_location = storage_location(symbol)
         print(symbol)
         # model dates list
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             os.path.join(clean_data_location, os.listdir(clean_data_location)[alternate_label_idx]))
         date_keys = list(pkl_file.keys())
         # list of out of sample dates
-        model_date = '20170705' # <-need to replace this with file reading model dates above
+
         for model_date in model_dates:
             forward_dates = nalsvm.forwardDates(date_keys, model_date)
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                 # force garbage collect
                 nalsvm.gc.collect()
                 # kernels
-                KLrbf = generators.RBF_generator(Xtr, gamma=[.001, .01, .1])
+                KLrbf = generators.RBF_generator(Xtr, gamma=[.01, .1])
                 # dont need the next bit
                 print('done with kernel')
                 print(forward_dates)
@@ -72,17 +72,22 @@ if __name__ == '__main__':
                 print('done')
                 print('the combination weights are:')
                 # this bit may be redundant here and we can put it somewhere else
+                weights_mkl = dict()
                 for sol in clf.solution:
                     print('(%d vs all): ' % sol, clf.solution[sol].weights) #dont need this loop- can make it redundant in another file
+                    weights_mkl[model_date] =clf.solution[sol].weights
 
                 for date in forward_dates:
+                    oos_results_mkl = dict()
+
+                    oos_results_average = dict()
                     print(date)
                     start = time.time()
                     nalsvm.logmemoryusage("Before garbage collect")
                     Xte = normalization(rescale_01(torch.Tensor(pkl_file[date][0].values)))
                     Yte = torch.Tensor(pkl_file[date][1].values)
                     try:
-                        KLte = generators.RBF_generator(Xte, gamma=[.001, .01, .1])
+                        KLte = generators.RBF_generator(Xte, gamma=[.01, .1])
                         print('sorted out test dates bit done')
                         nalsvm.gc.collect()
                         y_pred = clf.predict(KLte)  # predictions
@@ -92,6 +97,9 @@ if __name__ == '__main__':
                         accuracy_file_name = "_".join((symbol, model_date, date,alternate_label,'OOSResult.pkl'))
                         print('Accuracy score: %.3f' % accuracy)
                         evaluate_predictions(Yte, y_pred)
+                        oos_results_mkl[date] = evaluate_predictions(Yte, y_pred)
+
+
 
                         # average kernel as a base line
 

@@ -131,7 +131,7 @@ def jsonpickle_store_obj(obj, filename_location):
     print('encoded and saved in :', filename_location)
 
 if __name__ == '__main__':
-    symbol = 'RDSb.L'
+    symbol = 'RB.L'
     storage_location = storage_location(symbol)
     if not os.path.exists(storage_location):
         os.makedirs(storage_location)

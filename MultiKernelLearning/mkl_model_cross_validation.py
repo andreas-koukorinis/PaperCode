@@ -36,7 +36,7 @@ def load_pickled_in_filename(file):
 
 if __name__ == '__main__':
     cv_dict_list = defaultdict(dict)
-    for symbol in ['RDSa.L']:
+    for symbol in ['ECM.L']:
         print(symbol)  # which symbol - unnecessary at this point
         cross_validation_data_location = cross_validation_results_location(symbol)
         clean_data_location = storage_location(symbol)
