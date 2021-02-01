@@ -1,5 +1,6 @@
 import sys
 from memory_profiler import profile
+import pandas as pd
 
 sys.path.append('/home/ak/Documents/Research/PaperCode/singlekernelclf/')
 import jsonpickle
@@ -13,8 +14,10 @@ import os
 import torch
 import time
 import pickle
+from collections import defaultdict
 import new_alternate_single_svm as nalsvm
-from mkl_data_processing import storage_location, cross_validation_results_location, evaluate_predictions, oos_results_location, return_cross_val_symbol_path, model_dates_list
+from mkl_data_processing import storage_location, cross_validation_results_location, evaluate_predictions, \
+    oos_results_location, return_cross_val_symbol_path, model_dates_list
 from MKLpy.multiclass import OneVsRestMKLClassifier, OneVsOneMKLClassifier
 from mkl_model_cross_validation import load_pickled_in_filename
 # evaluate the solution
@@ -27,14 +30,17 @@ if __name__ == '__main__':
     # pick the symbols you want to try out of sample
     # pick the model dates- this is important as you need to calculate the out of sample "forward" dates
     # pick label
-    alternate_label = 'LabelsAlternateFour'
+    alternate_label = 'LabelsAlternateFive'
     # index of label - this can be redundant
     alternate_label_idx = list(nalsvm.labels_pickle_files).index(alternate_label)
     print(alternate_label)
     # clean data location
 
-    for symbol in ['PRU.L']:
+    for symbol in ['RDSa.L']:
+        print('Doing predictions!!')
         clean_data_location = storage_location(symbol)
+        print(clean_data_location)
+        out_of_sample_location = oos_results_location(symbol)
         print(symbol)
         # model dates list
         model_dates = model_dates_list(return_cross_val_symbol_path(symbol))
@@ -63,7 +69,7 @@ if __name__ == '__main__':
                 print(forward_dates)
                 # base learner- use c =1 or 10
                 # the c and lambda values need to be picked up by the cross-val results !
-                base_learner = SVC(C=10)
+                base_learner = SVC(C=1)
 
                 clf = EasyMKL(lam=0.2, multiclass_strategy='ova', learner=base_learner).fit(KLrbf, Ytr)
                 # try ovo as
@@ -74,13 +80,12 @@ if __name__ == '__main__':
                 # this bit may be redundant here and we can put it somewhere else
                 weights_mkl = dict()
                 for sol in clf.solution:
-                    print('(%d vs all): ' % sol, clf.solution[sol].weights) #dont need this loop- can make it redundant in another file
-                    weights_mkl[model_date] =clf.solution[sol].weights
+                    print('(%d vs all): ' % sol,
+                          clf.solution[sol].weights)  # dont need this loop- can make it redundant in another file
+                    weights_mkl[model_date] = clf.solution[sol].weights
 
                 for date in forward_dates:
-                    oos_results_mkl = dict()
-
-                    oos_results_average = dict()
+                    oos_results_mkl = defaultdict(dict)
                     print(date)
                     start = time.time()
                     nalsvm.logmemoryusage("Before garbage collect")
@@ -94,27 +99,48 @@ if __name__ == '__main__':
                         y_score = clf.decision_function(KLte)  # rank
                         # oos_svc_predictions = defaultdict(dict)
                         accuracy = accuracy_score(Yte, y_pred)
-                        accuracy_file_name = "_".join((symbol, model_date, date,alternate_label,'OOSResult.pkl'))
+                        accuracy_file_name = "_".join((symbol, model_date, date, alternate_label, 'OOSResult.pkl'))
                         print('Accuracy score: %.3f' % accuracy)
                         evaluate_predictions(Yte, y_pred)
-                        oos_results_mkl[date] = evaluate_predictions(Yte, y_pred)
-
-
+                        oos_results_mkl['MKL'][date] = evaluate_predictions(Yte, y_pred)
 
                         # average kernel as a base line
 
                         y_preds_average = mkl_avg.predict(KLte)  # predict the output class
-                        y_scores_average = mkl_avg.decision_function(KLte)  # returns the projection on the distance vector
+                        y_scores_average = mkl_avg.decision_function(
+                            KLte)  # returns the projection on the distance vector
                         average_accuracy = accuracy_score(Yte, y_preds_average)
-                        print ('Accuracy score: %.3f' % average_accuracy)
-                        evaluate_predictions(Yte, y_preds_average)
+                        print('Accuracy score: %.3f' % average_accuracy)
+                        oos_results_mkl['AVG'][date] = evaluate_predictions(Yte, y_preds_average)
                     except (ValueError, TypeError, EOFError, IndexError):
                         continue
 
             except (ValueError, TypeError, EOFError, IndexError):
                 # at some point for clarity we need to clean these error up.
                 continue
-                nalsvm.gc.collect()
-                print('done too')
-                end = time.time()
-                print(f'it took {end - start} seconds!')
+
+            # storing the results pickle
+
+            pickle_out_filename = os.path.join(out_of_sample_location,
+                                               "_".join((symbol, date, str(alternate_label), '_OOS_Results.pkl')))
+            mkl_pickle_out = open(pickle_out_filename, 'wb')
+            pickle.dump(oos_results_mkl, mkl_pickle_out)
+            mkl_pickle_out.close()
+
+            # oos_results_mkl_df = pd.DataFrame.from_dict(oos_results_mkl)
+            # oos_results_mkl_df.to_pickle(pickle_out_filename)
+
+            # storing the weights
+
+            weights_out_filename = os.path.join(out_of_sample_location,
+                                                "_".join((symbol, date, str(alternate_label), '_OOS_Weights.pkl')))
+
+            pickle_out = open(weights_out_filename, 'wb')
+            pickle.dump(weights_mkl, pickle_out)
+            pickle_out.close()
+
+            print('Now saved: ', pickle_out_filename)
+            nalsvm.gc.collect()
+            print('done too')
+            end = time.time()
+            print(f'it took {end - start} seconds!')
