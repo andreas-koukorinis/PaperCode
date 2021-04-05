@@ -6,23 +6,24 @@ import pandas as pd
 import numpy as np
 import time
 
-# filelocations
-clean_raw_data_path = '/media/ak/DataOnly/Data/'  # has a list of symbols in here with processed data-appendix is a list of symbols
-data_path = '/media/ak/My Passport/Data/FinDataReal/'  # this has features stored + labels stored
-labels_path = os.path.join(data_path, 'Labels')
-# list of symbols directory that has 2 files - this basically has two folders, one for HMM and one for SVM
-singleSVMmodels_path = '/media/ak/DataOnly/Data/features_models/models/'
-altFeatures_path = '/media/ak/WorkDrive/Data/features_models/features/'
 
+# Written in April 2021, this is basically a clean up version of the file I need to use for loading data.
 
-# todo: list of symbols for all the various features dates- think about how this is used in general though? do i need both
+# # ######### Locations of various files ######
 
-# for features, you append the data_path with a symbol and you get the list of dates for all the features
-# alternative way to load: '/media/ak/DataOnly/Data/features_models/models/', 'clfs_model_hash.pickle')
+def paths(path_name):
+    '''
+    :param path_name: short cut name for paths
+    :return: path URL
+    '''
+    pathDict = {'experiments': '/media/ak/DataOnly/SecondAlternativeExperimentPath/',
+                'symbols_features': '/media/ak/DataOnly/SymbolFeatureDirectories/',
+                'main': '/media/ak/DataOnly/'}
+    return pathDict[path_name]
+
 
 def no_nans(label):
     return np.sum(np.isnan(label))
-
 
 def remove_last_element(arr):
     return arr[np.arange(arr.size - 1)]
@@ -60,57 +61,75 @@ class DataLoader(object):
     todo: needs some refactoring so i dont produce the same function 2x and i can read from predecessors
     """
 
-    def __init__(self, path_main, ticker):
+    def __init__(self, path_main, symbol):
         self.main_path = path_main
-        self.ticker = ticker
+        self.symbol = symbol
+        self.symbol_features_path = os.path.join(self.main_path, str('SymbolFeatureDirectories'), self.symbol,
+                                                 'MODEL_BASED')
+        # collection of per symbol non directional labels - this will give the location of all the sub-directories
+        self.main_labels_path = os.path.join(self.main_path, 'ExperimentCommonLocs')
+        # this will give the location of all the alternative labels files
 
-        # collection of per symbol non directional labels
-        self.symbol_labels_path = os.path.join(self.main_path, 'Labels', self.ticker, 'NON_DIRECTIONAL')
-        self.symbol_features_path = os.path.join(self.main_path, self.ticker, 'MODEL_BASED')
         # list of all the model -oos hmm feature dates - each folder is a collection of oos feature dates
-        self.hmm_dates_list = os.listdir(self.symbol_features_path)  # each folder are the OOS features from each HMM
-        self.compute_date = os.listdir(os.path.join( \
-            self.symbol_features_path, \
-            os.listdir(self.symbol_features_path)[1]))[1].split("_")[7]
+        self.hmm_dates_list = os.listdir(self.symbol_features_path)
+        # each folder are the OOS features from each HMM
 
-    def symbol_features_date_load(self, hmm_model_date, features_date):
-        """
-        hmm_model_date: the hmm model that was used to produce the features, it is hashed by the date
-        features_date: the features date that we want to retrieve the features for
-        return: set of features for 3 state hmm for hmm_model_date, features_date combination
-        """
-        # need to make this a lot more flexible with number of states
-        if hmm_model_date < features_date:  # condition needed to make sure we dont pick-insample data
-            featuresfilename = "_".join(
-                (self.ticker, '3', 'states', 'features', 'date:', str(features_date), 'now:', self.compute_date,
-                 '.pickle'))
-            file_loc = os.path.join(self.symbol_features_path, str(hmm_model_date), featuresfilename)
+        # directory with all the symbols that have features at the moment
+        self.all_symbols_features_paths = os.path.join(self.main_path, 'SymbolFeatureDirectories')
 
+    def compute_date(self):
+        """
+        :param symbol_idx: symbol we are looking to get the compute date for
+        :return: compute date
+        """
+        compute_date = \
+            os.listdir(os.path.join(self.symbol_features_path, os.listdir(self.symbol_features_path)[1]))[1].split("_")[
+                -2]
+        return compute_date
+
+    def symbol_specific_label_path(self, label_number):
+        """
+        gets for each symbol label number combination the specific path
+        :param label_number: takes value 1 to 7 in numeric format
+        :return: returns a path
+        """
+        labels_numbers = {1: 'LabelsAlternateOne', 2: 'LabelsAlternateTwo', 3: 'LabelsAlternateThree',
+                          4: 'LabelsAlternateFour', 5: 'LabelsAlternateFive', 6: 'LabelsAlternateSix',
+                          7: 'LabelsAlternateSeven'}
+        return os.path.join(self.main_labels_path, labels_numbers[label_number], self.symbol)
+
+    def symbol_specific_labels_dates(self, label_number):
+        """
+
+        :param label_number: label number and takes value 1 to 7
+        :return: list of dates
+        """
+        list_of_dates = [f.split(".")[0] for f in os.listdir(self.symbol_specific_label_path(label_number))]
+        return list_of_dates
+
+    def ticker_features(self, model_date, date):
+        # TODO: need to make this a lot more flexible with number of states
+        """
+        this loads up a particular feature date
+        """
+        if model_date < date:
+            file_name = "_".join(
+                (self.symbol, '3', 'states', 'features', 'date:', date, 'now:', str(self.compute_date()), '.pickle'))
+            file_loc = os.path.join(self.symbol_features_path, str(model_date), file_name)
             with open(file_loc, 'rb') as handle:
-                ticker_features_date = pickle.load(handle, encoding='latin1')
+                ticker_features = pickle.load(handle, encoding='latin1')
+        else:
+            print('Loading Feature Date which is in-sample. Change your Model Date')
 
-        if hmm_model_date > features_date:
-            raise ValueError('Loading Feature Date which is in-sample. Change your Model Date')
+        return ticker_features
 
-        return ticker_features_date
-
-    def symbol_labels_date(self, date):
+    def ticker_specific_label_date_csv(self, label_number, date):
         """
-        takes a specific date that labels exist and returns the exact labels from that dataframe
-        parameter: date that labels exist
-
+        returns specific label number and date file for ticker. has data and labels
         """
-        file_loc = os.path.join(self.symbol_labels_path, str(date) + '.csv')
-        symbol_date_df = pd.read_csv(file_loc, index_col=0)
-        return symbol_date_df.filter(like='label', axis=1)
-
-    def symbol_date_processed_data_load(self, date):
-        """
-        takes a specific date that labels exist and returns the processed data frame of raw data
-        parameter: date that labels exist
-
-        """
-        return pd.read_csv(os.path.join(self.symbol_labels_path, str(date) + '.csv'))
+        file_loc = os.path.join(self.symbol_specific_label_path(label_number), str(date) + '.csv')
+        ticker_labels = pd.read_csv(file_loc, index_col=0)
+        return ticker_labels
 
     @staticmethod
     def open_pickle_file(path, pickle_file):
@@ -121,3 +140,32 @@ class DataLoader(object):
     @staticmethod
     def get_date_from_file(file_, numb_):
         return os.path.splitext(file_[numb_])[0]
+
+    def hmm_model_date_feature_list_filepaths(self, hmm_date):
+        """
+        produces a list of HMM model- feature dates combinations
+        :param hmm_date: put a date that an HMM exists
+        :return: get a list of paths for each of the HMM dates
+        """
+        feature_dates_files = [os.path.join(self.symbol_features_path, hmm_date, f)
+                               for f in os.listdir(os.path.join(self.symbol_features_path, hmm_date))]
+
+        features_dates_files_dict = {f.split("_")[5]: os.path.join(self.symbol_features_path, hmm_date, f) for f in os.listdir(os.path.join(self.symbol_features_path, hmm_date))
+                                     if os.path.isfile(os.path.join(self.symbol_features_path, hmm_date, f))}
+        # decided to return both so I can have the key in the second case to merge them with the
+        # output of the function below and have all my files in the same place
+
+        return [sorted(feature_dates_files), features_dates_files_dict]
+
+    def hmm_model_feature_corrsp_labels_files(self, hmm_date, label_idx):
+        """
+        picks up from what we did above so for each HMM dates, strips out the features dates and produces labels files where they exist only
+        :param hmm_date: get an HMM date
+        :param label_idx: get a label ID from 1-7
+        :return: all the various labels files! the keys will be used to construct out of sample dates!
+        """
+        features_dates_files = [f.split("_")[6] for f in self.hmm_model_date_feature_list_filepaths(hmm_date)[0]]
+        label_path = self.symbol_specific_label_path(label_idx)
+        feature_corresponding_labels_paths ={f:os.path.join(label_path,str(f)+'.csv' ) for f in features_dates_files if os.path.isfile(os.path.join(label_path,str(f)+'.csv' ) )}
+
+        return feature_corresponding_labels_paths

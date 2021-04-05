@@ -14,7 +14,7 @@ from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_scor
 from collections import defaultdict
 
 # paths
-dataDrive = '/media/ak/My Passport/Data/FinDataReal/'  # also labels location folder
+dataDrive = '/media/ak/DataOnly/FinDataReal/'  # also labels location folder
 jointLocationsPickleFolder = os.path.join(dataDrive, 'JointLocationsDicts')
 extPath = '/media/ak/My Passport/ExperimentData'
 featuresPath = "/".join((extPath, 'features'))  # path with features

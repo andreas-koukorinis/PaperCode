@@ -50,14 +50,7 @@ class FitModels(object):
 
         return gb_boost_clf
 
-    def best_MKL_clf(self):
-        pass
 
-    def best_knn_clf(self):
-        pass
-
-    def best_random_forest_clf(self):
-        pass
 
     def run_cv(self, clf_class, **kwargs):
         # Construct a kfolds object
