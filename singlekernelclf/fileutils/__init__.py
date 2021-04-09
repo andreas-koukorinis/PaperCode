@@ -169,3 +169,9 @@ class DataLoader(object):
         feature_corresponding_labels_paths ={f:os.path.join(label_path,str(f)+'.csv' ) for f in features_dates_files if os.path.isfile(os.path.join(label_path,str(f)+'.csv' ) )}
 
         return feature_corresponding_labels_paths
+
+
+if __name__ == '__main__':
+    import os
+
+    print(os.listdir(paths('symbols_features')))
