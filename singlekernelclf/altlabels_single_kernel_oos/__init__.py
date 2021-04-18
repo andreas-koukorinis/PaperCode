@@ -126,129 +126,129 @@ jointLocationsPickleFolder = os.path.join(dataDrive, 'JointLocationsDicts')
 extPath = '/media/ak/My Passport/ExperimentData'
 featuresPath = "/".join((extPath, 'features'))  # path with features
 experimentPath = os.path.join(extPath,'AlternateLabelExperimentPath' )
-
-# Labels
-labels_location_folder = fileutils.data_path  # this is the folder where all the labels are saved
-
-labels_pickle_files = sorted([s for s in os.listdir(labels_location_folder) if ('LabelsAlternate') in s if
-                              not ('.pkl') in s])  # these are all the dicts that we have alternate labels for.
-# labels_pickle_files: these are all the dicts that we have alternate labels for.
-
-symbols = [f for f in [s for s in os.listdir(labels_location_folder) if '.L' in s if '_Features' not in s] if
-           ('.L_A' or '_Features') not in f]  # from all
-forwardDates = [f for f in os.listdir(dataDrive) if 'ForwardDates' in f]
-svcModels = [g for g in os.listdir(dataDrive) if '_SingleKernelSVC' in g]
+#
+# # Labels
+# labels_location_folder = fileutils.data_path  # this is the folder where all the labels are saved
+#
+# labels_pickle_files = sorted([s for s in os.listdir(labels_location_folder) if ('LabelsAlternate') in s if
+#                               not ('.pkl') in s])  # these are all the dicts that we have alternate labels for.
+# # labels_pickle_files: these are all the dicts that we have alternate labels for.
+#
+# symbols = [f for f in [s for s in os.listdir(labels_location_folder) if '.L' in s if '_Features' not in s] if
+#            ('.L_A' or '_Features') not in f]  # from all
+# forwardDates = [f for f in os.listdir(dataDrive) if 'ForwardDates' in f]
+# svcModels = [g for g in os.listdir(dataDrive) if '_SingleKernelSVC' in g]
 
 if __name__ == "__main__":
-    symbol = 'UU.L'
-    # this is a list of all the models that have been fitted, format is Symbol_label_type_single_kernel_svc
-    # like this: Symbol_LabelsAlternateOne_SingleKernelSVC.pkl'
-    symbolSVCModels = [g for g in svcModels if str(symbol) in g]
-
-    for alternate_label_idx in range (0,4):
-
-        print(alternate_label_idx)  # pick a label by index
-        # look into the JointLocationsDicts folder and list all the symbols for which we have joint locations
-        # this is needed to make sure you pick a symbol that has both model and data/labels
-        # output is a list of symbols
-        jointLocsSymbols = list(np.unique([f.split("_")[0] for f in os.listdir(jointLocationsPickleFolder)]))
-
-        # return index of symbol from above list. i.e fit the symbol you
-        # chose by ticker and get index back
-        symbol_idx = jointLocsSymbols.index(symbol)  # jointLocsSymbols[symbol_idx]--> this returns the symbol.
-
-        # instance of the class with the necessary functions
-
-        data_cls = nalsvm.AlternateLabelFeaturesLoader(path_main=dataDrive, symbol=symbol,
-                                                       alternate_label_idx=alternate_label_idx,
-                                                       jointLocationsPickleInput=jointLocationsPickleFolder)
-
-        # return a dictionary that has a key a date which is the HMM feature date and the labels
-        # the values are the location of such feature file and the labels file
-        jointLocationsDictionary = (data_cls.load_pickled_in_filename(data_cls.return_pickled_dict()))
-
-        joint_keys = data_cls.joint_loc_pickle_keys(data_cls.return_pickled_dict())
-        # basically the keys of the above dictionary
-
-        print(labels_pickle_files[alternate_label_idx])  # which label I am using - do i really need this?
-        logmemoryusage("Before garbage collect")
-        gc.collect()  # continue
-
-        # ------------- SVC Model Location and Alternate Labels -------------
-
-        # the bit below returns the symbol _alternate label type_ svc model for all the choices made above
-        symbolSVCModelLocationIndexedLabel = \
-            [f for f in symbolSVCModels if str(labels_pickle_files[alternate_label_idx]) in f][0]
-        # join with the path to get the complete Location, via symbol+ SVC + Model Location
-        symbolSVCModelLocation = os.path.join(dataDrive, symbolSVCModelLocationIndexedLabel)
-        print(symbolSVCModelLocation)  # just checking you got the right location
-        # may need to check I am using the correct label
-        alternate_label = symbolSVCModelLocation.split("_")[1]
-
-        # ------------- MODELS -------------
-        # unpickle the models - returns a dictionary
-        models = unpickle_csv(symbolSVCModelLocation)
-        # get all the dates I have models for- returns a list
-        modelDates = list(models[list(models.keys())[0]].keys())
-        # pick the first date
-        for modelDateIdx,_ in enumerate(modelDates): # <-- this is fit-date in sample that corresponds to the labels date too
-            print('-------------------------------------------Doing Model date:------>',modelDates[modelDateIdx])
-            print('-------------------------------------------For Symbol:------>', symbol)
-
-            # select the first model date model - this returns an scikit object
-
-            svc = models[str(symbol)][modelDates[modelDateIdx]]['SVC']  # model object
-
-            # start measuring time for profiling
-            start = time.time()
-            # check that your symbol is in the list of symbols
-            if symbol in jointLocsSymbols:
-                print('ok to go')  # un-necessary logging
-                print(symbol, ' and labels ', labels_pickle_files[alternate_label_idx])
-                # get the correct features and labels
-                features, labels = ticker_features_labels(jointLocationsDictionary[modelDates[modelDateIdx]])
-                # take out features and labels properly
-                X_fit, y_fit = feature_labels_fit(features, labels)
-                # get fitted model object
-                try:
-                    fitted_model = svc.fit(X_fit, y_fit)
-                    # now get a list of all the out of sample dates
-                    symbolForwardDates = nalsvm.forwardDates(joint_keys, modelDates[modelDateIdx])
-                    oos_svc_predictions = defaultdict(dict)
-                    # alias to store the data : symbol, joint Date, Label Used
-                    results_predict_alias = "_".join((symbol, modelDates[modelDateIdx], alternate_label))
-
-                    for forward_date_idx, forward_date in enumerate(symbolForwardDates):
-                        features_oos, labels_oos = ticker_features_labels(
-                            jointLocationsDictionary[symbolForwardDates[forward_date_idx]])
-                        if hmm_features_df(features_oos).isnull().values.all():
-                            print('Problem')
-                        else:
-                            X_true, y_true = feature_labels_fit(features_oos, labels_oos)
-                            try:
-                                y_pred = fitted_model.predict(X_true)
-                                print(evaluate_predictions(y_true, y_pred))
-                                # store the results
-                                oos_svc_predictions[results_predict_alias][forward_date] = evaluate_predictions(y_true, y_pred)
-                            except ValueError:
-                                print('value error here:', forward_date)
-                                continue
-                except ValueError:
-
-                    continue
-
-
-                    # store the results
-
-                print('******* Finished and now saving -*-*-*-')
-
-                pickle_out_filename = os.path.join(experimentPath, "_".join(
-                    (symbol, labels_pickle_files[alternate_label_idx],modelDates[modelDateIdx], 'OOS_results_dict.pkl')))
-                pickle_out = open(pickle_out_filename, 'wb')
-                pickle.dump(oos_svc_predictions, pickle_out)
-                pickle_out.close()
-                print('saved', pickle_out_filename)
-
-
-                end = time.time()
-                print(f'it took {end - start} seconds!')
+    # symbol = 'UU.L'
+    # # this is a list of all the models that have been fitted, format is Symbol_label_type_single_kernel_svc
+    # # like this: Symbol_LabelsAlternateOne_SingleKernelSVC.pkl'
+    # symbolSVCModels = [g for g in svcModels if str(symbol) in g]
+    #
+    # for alternate_label_idx in range (0,4):
+    #
+    #     print(alternate_label_idx)  # pick a label by index
+    #     # look into the JointLocationsDicts folder and list all the symbols for which we have joint locations
+    #     # this is needed to make sure you pick a symbol that has both model and data/labels
+    #     # output is a list of symbols
+    #     jointLocsSymbols = list(np.unique([f.split("_")[0] for f in os.listdir(jointLocationsPickleFolder)]))
+    #
+    #     # return index of symbol from above list. i.e fit the symbol you
+    #     # chose by ticker and get index back
+    #     symbol_idx = jointLocsSymbols.index(symbol)  # jointLocsSymbols[symbol_idx]--> this returns the symbol.
+    #
+    #     # instance of the class with the necessary functions
+    #
+    #     data_cls = nalsvm.AlternateLabelFeaturesLoader(path_main=dataDrive, symbol=symbol,
+    #                                                    alternate_label_idx=alternate_label_idx,
+    #                                                    jointLocationsPickleInput=jointLocationsPickleFolder)
+    #
+    #     # return a dictionary that has a key a date which is the HMM feature date and the labels
+    #     # the values are the location of such feature file and the labels file
+    #     jointLocationsDictionary = (data_cls.load_pickled_in_filename(data_cls.return_pickled_dict()))
+    #
+    #     joint_keys = data_cls.joint_loc_pickle_keys(data_cls.return_pickled_dict())
+    #     # basically the keys of the above dictionary
+    #
+    #     print(labels_pickle_files[alternate_label_idx])  # which label I am using - do i really need this?
+    #     logmemoryusage("Before garbage collect")
+    #     gc.collect()  # continue
+    #
+    #     # ------------- SVC Model Location and Alternate Labels -------------
+    #
+    #     # the bit below returns the symbol _alternate label type_ svc model for all the choices made above
+    #     symbolSVCModelLocationIndexedLabel = \
+    #         [f for f in symbolSVCModels if str(labels_pickle_files[alternate_label_idx]) in f][0]
+    #     # join with the path to get the complete Location, via symbol+ SVC + Model Location
+    #     symbolSVCModelLocation = os.path.join(dataDrive, symbolSVCModelLocationIndexedLabel)
+    #     print(symbolSVCModelLocation)  # just checking you got the right location
+    #     # may need to check I am using the correct label
+    #     alternate_label = symbolSVCModelLocation.split("_")[1]
+    #
+    #     # ------------- MODELS -------------
+    #     # unpickle the models - returns a dictionary
+    #     models = unpickle_csv(symbolSVCModelLocation)
+    #     # get all the dates I have models for- returns a list
+    #     modelDates = list(models[list(models.keys())[0]].keys())
+    #     # pick the first date
+    #     for modelDateIdx,_ in enumerate(modelDates): # <-- this is fit-date in sample that corresponds to the labels date too
+    #         print('-------------------------------------------Doing Model date:------>',modelDates[modelDateIdx])
+    #         print('-------------------------------------------For Symbol:------>', symbol)
+    #
+    #         # select the first model date model - this returns an scikit object
+    #
+    #         svc = models[str(symbol)][modelDates[modelDateIdx]]['SVC']  # model object
+    #
+    #         # start measuring time for profiling
+    #         start = time.time()
+    #         # check that your symbol is in the list of symbols
+    #         if symbol in jointLocsSymbols:
+    #             print('ok to go')  # un-necessary logging
+    #             print(symbol, ' and labels ', labels_pickle_files[alternate_label_idx])
+    #             # get the correct features and labels
+    #             features, labels = ticker_features_labels(jointLocationsDictionary[modelDates[modelDateIdx]])
+    #             # take out features and labels properly
+    #             X_fit, y_fit = feature_labels_fit(features, labels)
+    #             # get fitted model object
+    #             try:
+    #                 fitted_model = svc.fit(X_fit, y_fit)
+    #                 # now get a list of all the out of sample dates
+    #                 symbolForwardDates = nalsvm.forwardDates(joint_keys, modelDates[modelDateIdx])
+    #                 oos_svc_predictions = defaultdict(dict)
+    #                 # alias to store the data : symbol, joint Date, Label Used
+    #                 results_predict_alias = "_".join((symbol, modelDates[modelDateIdx], alternate_label))
+    #
+    #                 for forward_date_idx, forward_date in enumerate(symbolForwardDates):
+    #                     features_oos, labels_oos = ticker_features_labels(
+    #                         jointLocationsDictionary[symbolForwardDates[forward_date_idx]])
+    #                     if hmm_features_df(features_oos).isnull().values.all():
+    #                         print('Problem')
+    #                     else:
+    #                         X_true, y_true = feature_labels_fit(features_oos, labels_oos)
+    #                         try:
+    #                             y_pred = fitted_model.predict(X_true)
+    #                             print(evaluate_predictions(y_true, y_pred))
+    #                             # store the results
+    #                             oos_svc_predictions[results_predict_alias][forward_date] = evaluate_predictions(y_true, y_pred)
+    #                         except ValueError:
+    #                             print('value error here:', forward_date)
+    #                             continue
+    #             except ValueError:
+    #
+    #                 continue
+    #
+    #
+    #                 # store the results
+    #
+    #             print('******* Finished and now saving -*-*-*-')
+    #
+    #             pickle_out_filename = os.path.join(experimentPath, "_".join(
+    #                 (symbol, labels_pickle_files[alternate_label_idx],modelDates[modelDateIdx], 'OOS_results_dict.pkl')))
+    #             pickle_out = open(pickle_out_filename, 'wb')
+    #             pickle.dump(oos_svc_predictions, pickle_out)
+    #             pickle_out.close()
+    #             print('saved', pickle_out_filename)
+    #
+    #
+    #             end = time.time()
+    #             print(f'it took {end - start} seconds!')

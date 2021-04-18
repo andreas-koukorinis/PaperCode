@@ -31,9 +31,9 @@ class FitModels(object):
         return kr_clf
 
     def best_svc_clf(self):
-        param_grid = dict(kernel=['rbf'],
+        param_grid = dict(kernel=['rbf','poly'],
                           C=[1, 10, 100],
-                          gamma=[0.0001, 0.001, 0.01, 0.02])
+                          gamma=[0.0001, 0.001, 0.01])
 
         clf = GridSearchCV(SVC(class_weight='balanced'), param_grid, verbose=1, n_jobs=-1, cv=5)
         clf = clf.fit(self.X_train, self.y_train)

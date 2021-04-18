@@ -25,6 +25,7 @@ def paths(path_name):
 def no_nans(label):
     return np.sum(np.isnan(label))
 
+
 def remove_last_element(arr):
     return arr[np.arange(arr.size - 1)]
 
@@ -54,6 +55,56 @@ def get_files_for_ticker(ticker):
     return files_for_ticker
 
 
+class DataStorage(object):
+    """
+    class that stores data of all sorts
+    """
+
+    def __init__(self, path_main, symbol):
+        self.main_path = path_main
+        self.symbol = symbol
+
+    def check_if_path_exists_or_create(self, sub_path):
+        """ take a subpath and check if it exists, if not create it"""
+
+        if not os.path.isdir(os.path.join(self.main_path, sub_path, self.symbol)):
+            os.makedirs(os.path.join(self.main_path, sub_path, self.symbol))
+
+    @staticmethod
+    def store_processed_data_pickle(pickle_out_filename, file_to_pickle):
+        pickle_out = open(pickle_out_filename, 'wb')
+        pickle.dump(file_to_pickle, pickle_out)
+        pickle_out.close()
+        return print("file stored:", pickle_out_filename)
+
+    def storage_common_locations(self, hmm_features_list):
+        """
+
+        :param symbol: symbol that we have locations of Data that is clean, i.e matched labels and features
+        :return: full absolute path
+        """
+        storage_location = os.path.join(self.main_path, 'MKLCommonDataLocations', self.symbol)
+        return storage_location
+
+    def storage_fitted_model_locations(self):
+        """
+
+        :param symbol: symbol that we have locations for fitted models
+        :return: full absolute path
+        """
+        storage_location = os.path.join(self.main_path, 'MKLFittedModels', self.symbol)
+        return storage_location
+
+    def storage_fitted_model_locations(self):
+        """
+
+        :param symbol: symbol that we have locations for fitted models
+        :return: full absolute path
+        """
+        storage_location = os.path.join(self.main_path, 'MKLOOSPredictions', self.symbol)
+        return storage_location
+
+#
 class DataLoader(object):
     """
     class that loads and cleans up data
@@ -150,7 +201,8 @@ class DataLoader(object):
         feature_dates_files = [os.path.join(self.symbol_features_path, hmm_date, f)
                                for f in os.listdir(os.path.join(self.symbol_features_path, hmm_date))]
 
-        features_dates_files_dict = {f.split("_")[5]: os.path.join(self.symbol_features_path, hmm_date, f) for f in os.listdir(os.path.join(self.symbol_features_path, hmm_date))
+        features_dates_files_dict = {f.split("_")[5]: os.path.join(self.symbol_features_path, hmm_date, f) for f in
+                                     os.listdir(os.path.join(self.symbol_features_path, hmm_date))
                                      if os.path.isfile(os.path.join(self.symbol_features_path, hmm_date, f))}
         # decided to return both so I can have the key in the second case to merge them with the
         # output of the function below and have all my files in the same place
@@ -166,7 +218,8 @@ class DataLoader(object):
         """
         features_dates_files = [f.split("_")[6] for f in self.hmm_model_date_feature_list_filepaths(hmm_date)[0]]
         label_path = self.symbol_specific_label_path(label_idx)
-        feature_corresponding_labels_paths ={f:os.path.join(label_path,str(f)+'.csv' ) for f in features_dates_files if os.path.isfile(os.path.join(label_path,str(f)+'.csv' ) )}
+        feature_corresponding_labels_paths = {f: os.path.join(label_path, str(f) + '.csv') for f in features_dates_files
+                                              if os.path.isfile(os.path.join(label_path, str(f) + '.csv'))}
 
         return feature_corresponding_labels_paths
 
@@ -174,4 +227,4 @@ class DataLoader(object):
 if __name__ == '__main__':
     import os
 
-    print(os.listdir(paths('symbols_features')))
+    print(sorted(os.listdir(paths('symbols_features'))))

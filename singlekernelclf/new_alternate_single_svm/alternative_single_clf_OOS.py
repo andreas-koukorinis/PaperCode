@@ -71,11 +71,41 @@ def evaluate_predictions(y_true, y_preds):
 
 if __name__ == '__main__':
 
+    # alternate_labels_nos = [1, 2, 3, 4, 5, 6, 7]  # we have 7 alternative data types
+    mainPath = paths('main')
+    label_idx = 0  # to be serialised
+
+
+    fittedModelsPath = os.path.join(mainPath, "ExperimentCommonLocs/FittedModels")
+    oosPredictionsPath = os.path.join(mainPath, "ExperimentCommonLocs/OOSPredictions")
+
+    symbols = sorted(os.listdir(paths('symbols_features')))
+    print(symbols) # all symbols
+    symbol_idx = 1
+    symbol = symbols[symbol_idx]  # to be serialised so read all the symbols
+    print(symbol)
+
+    alternate_labels_nos = [ 1, 2, 3, 4, 5, 6, 7]  # we have 7 alternative data types
+    mainPath = paths('main')
+    symbolData = DataLoader(mainPath, symbol) # initiate a path where all the data should be
+    pickled_models = [f for f in os.listdir(fittedModelsPath) if str(symbol) in f]  # list of all the pickled models
+    print(pickled_models)
+    for pickled_model in pickled_models:
+
+        print(pickled_model)
+        model_date = (pickled_model.split("_")[1])  # load an HMM date model
+        model_path = os.path.join(fittedModelsPath, pickled_model)
+        print(model_path)
+        print(os.path.isfile(model_path))
+        best_svc = open_pickle_filepath(model_path)
+        print(best_svc.keys())
+        best_svc_key_dates = list(best_svc[str(symbol)].keys())
+        print(best_svc_key_dates)
+
     def oos_prediction_function(symbol, label_idx):
         # put it in one function to do simple parallelization
 
-        symbolData = DataLoader(mainPath, symbol) # initiate a path where all the data should be
-        pickled_models = [f for f in os.listdir(fittedModelsPath) if str(symbol) in f]  # list of all the pickled models
+
         for pickled_model in pickled_models: # pick a pickled model
 
             model_date = (pickled_model.split("_")[1])  # load an HMM date model
@@ -88,17 +118,19 @@ if __name__ == '__main__':
                 hmm_date = symbolData.hmm_dates_list[hmm_date_idx]  # get all the dates we have essentially an hmm model
                 labels_paths = symbolData.hmm_model_feature_corrsp_labels_files(hmm_date,
                                                                                 alternate_labels_nos[label_idx])
-                best_svc_key_dates = list(best_svc[str(symbol)].keys())
-                print(best_svc_key_dates)
+                # best_svc_key_dates = list(best_svc[str(symbol)].keys())
+                # print(best_svc_key_dates)
+                # forwardDatesList = forwardDates(list(labels_paths.keys()), best_svc_key_date)
 
-                for best_svc_key_date in best_svc_key_dates:
+                #
+                # for best_svc_key_date in best_svc_key_dates:
+                #
+                #     # all the various combinations of HMM dates,
+                #     # features models.
+                #
+                #     # all the labels dates that are after the key date that this model was fitted
 
-                    # all the various combinations of HMM dates,
-                    # features models.
 
-                    # all the labels dates that are after the key date that this model was fitted
-
-                    forwardDatesList = forwardDates(list(labels_paths.keys()), best_svc_key_date)
 
                     # all the various paths
 
@@ -110,80 +142,68 @@ if __name__ == '__main__':
 
                         if model_date < forwardDateKey:  # simple check that your model date is not after your forward date!
                             oos_svc_predictions = defaultdict(dict)
+    #
+    #                         # get your labels
+    #
+    #                         labels = pd.read_csv(labels_paths[forwardDateKey])
+    #                         label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
+    #
+    #                         # create features - first HMM and second some Market Features!
+    #
+    #                         hmm_features = nfu.hmm_features_df(open_pickle_filepath(features_paths[forwardDateKey]))
+    #
+    #                         if hmm_features.isnull().values.all():
+    #                             print('Problem: your HMM features did not compute properly')
+    #                         else:
+    #
+    #                             market_features_df = CreateMarketFeatures(
+    #                                 CreateMarketFeatures(
+    #                                     CreateMarketFeatures(df=CreateMarketFeatures(df=labels).ma_spread_duration())
+    #                                         .ma_spread()).chaikin_mf()).obv_calc()  # market features dataframe
+    #
+    #                             df_concat = pd.DataFrame(
+    #                                 pd.concat([hmm_features, market_features_df], axis=1, sort='False').dropna())
+    #
+    #                             df = df_concat[df_concat[label_name].notna()]
+    #                             df_final = df.drop(
+    #                                 columns=['TradedPrice', 'Duration', 'TradedTime', 'ReturnTradedPrice',
+    #                                          'Volume', label_name])
+    #
+    #                             y_test = df[df.columns[df.columns.str.contains(pat='label')]].iloc[:, 0]
+    #
+    #                             try:
+    #
+    #                                 X_test = MinMaxScaler().fit_transform(df_final)
+    #
+    #                                 y_pred = best_svc[str(symbol)][model_date]['SVC'].predict(X_test)
+    #                                 print(evaluate_predictions(y_test, y_pred))
+    #                                 # store the results
+    #                                 results_predict_alias = "_".join(
+    #                                     (symbol, forwardDateKey, str(alternate_labels_nos[label_idx])))
+    #                                 oos_svc_predictions[results_predict_alias][forwardDateKey] = evaluate_predictions(
+    #                                     y_test, y_pred)
+    #
+    #                             except ValueError:
+    #                                 print('value error here:****************************************')
+    #                                 continue
+    #
+    #                     else:
+    #
+    #                         pass
+    #
+    #                     # store the results
+    #
+    #                     print('******* Finished and now saving -*-*-*-')
+    #
+    #                     pickle_out_filename = os.path.join(oosPredictionsPath, "_".join(
+    #                         (symbol, str(alternate_labels_nos[label_idx]), forwardDateKey, 'OOS_results_dict.pkl')))
+    #                     pickle_out = open(pickle_out_filename, 'wb')
+    #                     pickle.dump(oos_svc_predictions, pickle_out)
+    #                     pickle_out.close()
+    #                     print('saved', pickle_out_filename)
+    #
+    #
 
-                            # get your labels
-
-                            labels = pd.read_csv(labels_paths[forwardDateKey])
-                            label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
-
-                            # create features - first HMM and second some Market Features!
-
-                            hmm_features = nfu.hmm_features_df(open_pickle_filepath(features_paths[forwardDateKey]))
-
-                            if hmm_features.isnull().values.all():
-                                print('Problem: your HMM features did not compute properly')
-                            else:
-
-                                market_features_df = CreateMarketFeatures(
-                                    CreateMarketFeatures(
-                                        CreateMarketFeatures(df=CreateMarketFeatures(df=labels).ma_spread_duration())
-                                            .ma_spread()).chaikin_mf()).obv_calc()  # market features dataframe
-
-                                df_concat = pd.DataFrame(
-                                    pd.concat([hmm_features, market_features_df], axis=1, sort='False').dropna())
-
-                                df = df_concat[df_concat[label_name].notna()]
-                                df_final = df.drop(
-                                    columns=['TradedPrice', 'Duration', 'TradedTime', 'ReturnTradedPrice',
-                                             'Volume', label_name])
-
-                                y_test = df[df.columns[df.columns.str.contains(pat='label')]].iloc[:, 0]
-
-                                try:
-
-                                    X_test = MinMaxScaler().fit_transform(df_final)
-
-                                    y_pred = best_svc[str(symbol)][model_date]['SVC'].predict(X_test)
-                                    print(evaluate_predictions(y_test, y_pred))
-                                    # store the results
-                                    results_predict_alias = "_".join(
-                                        (symbol, forwardDateKey, str(alternate_labels_nos[label_idx])))
-                                    oos_svc_predictions[results_predict_alias][forwardDateKey] = evaluate_predictions(
-                                        y_test, y_pred)
-
-                                except ValueError:
-                                    print('value error here:****************************************')
-                                    continue
-
-                        else:
-
-                            pass
-
-                        # store the results
-
-                        print('******* Finished and now saving -*-*-*-')
-
-                        pickle_out_filename = os.path.join(oosPredictionsPath, "_".join(
-                            (symbol, str(alternate_labels_nos[label_idx]), forwardDateKey, 'OOS_results_dict.pkl')))
-                        pickle_out = open(pickle_out_filename, 'wb')
-                        pickle.dump(oos_svc_predictions, pickle_out)
-                        pickle_out.close()
-                        print('saved', pickle_out_filename)
-
-
-    # alternate_labels_nos = [1, 2, 3, 4, 5, 6, 7]  # we have 7 alternative data types
-    mainPath = paths('main')
-    # label_idx = 0  # to be serialised
-    # symbol = 'AAL.L'  # to be serialised so read all the symbols
-
-    fittedModelsPath = os.path.join(mainPath, "ExperimentCommonLocs/FittedModels")
-    oosPredictionsPath = os.path.join(mainPath, "ExperimentCommonLocs/OOSPredictions")
-
-    symbols = sorted(os.listdir(paths('symbols_features')))
-    print(symbols)
-
-    alternate_labels_nos = [ 1, 2, 3, 4, 5, 6, 7]  # we have 7 alternative data types
-    mainPath = paths('main')
-
-    with multiprocessing.Pool(processes=4) as process_pool:
-        process_pool.starmap(oos_prediction_function, itertools.product(symbols, alternate_labels_nos))
+    #
+    # with multiprocessing.Pool(processes=4) as process_pool:
+    #     process_pool.starmap(oos_prediction_function, itertools.product(symbols, alternate_labels_nos))
