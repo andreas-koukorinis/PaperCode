@@ -31,7 +31,15 @@ def open_pickle_filepath(pickle_file):
 
 
 if __name__ == '__main__':
-    symbols = sorted(os.listdir(paths('symbols_features')))
+    #symbols = sorted(os.listdir(paths('symbols_features')))
+    symbols = ['VOD.L', 'MAB.L', 'RBS.L', 'LAND.L']
+        #[ 'LLOY.L', 'MKS.L', 'WPP.L', 'CPG.L']
+        #['SDR.L', 'APF.L', 'STAN.L', 'REL.L', 'AZN.L', 'CCL.L', 'SGE.L', 'RDSb.L']
+    #['RDSa.L', 'RSA.L', 'SPT.L', 'CEY.L', 'RB.L', 'TSCO.L', 'ITV.L', 'PSON.L']
+    #['PRU.L', 'SHP.L', 'RTO.L', 'BATS.L', 'ULVR.L', 'RR.L', 'CPI.L', 'UU.L']
+        #['LGEN.L', 'SMIN.L', 'NG.L', 'BLT.L', 'KGF.L']
+               # 'LLOY.L', 'MKS.L', 'WPP.L', 'CPG.L',
+               # 'BARC.L', 'AV.L', 'AAL.L', 'VOD.L', 'MAB.L', 'RBS.L', 'LAND.L']
 
     alternate_labels_nos = [1, 2, 3, 4, 5, 6, 7]  # we have 7 alternative data types
     mainPath = paths('main')
@@ -83,26 +91,33 @@ if __name__ == '__main__':
                                 X_train = MinMaxScaler().fit_transform(df_final)
                                 models_cls = FitModels(X_train, y_train)
                                 print(models_cls.best_svc_clf())
-                                best_svc_dict[symbol][key] = {'SVC': models_cls.best_svc_clf()}
-                                # this is a symbol, label-date fitted SVC
+                                best_svc_dict[symbol][key] = {'SVC': models_cls.best_svc_clf(),
+                                                              'best_params': models_cls.best_svc_clf().best_params_,
+                                                              'means': models_cls.best_svc_clf().cv_results_['mean_test_score'],
+                                                              'stds': models_cls.best_svc_clf().cv_results_['std_test_score'],
+                                                              'params' : models_cls.best_svc_clf().cv_results_['params'],
+                                                              'best_score' : models_cls.best_svc_clf().best_score_
+                                                              }
+
 
                             except ValueError:
                                 continue
                                 logmemoryusage("at the end")
 
+                        pickle_out_filename = os.path.join(mainPath, "ExperimentCommonLocs/FittedModels", "_".join(
+                            (symbol, 'model_fit_date', str(key), str(alternate_labels_nos[label_idx]), 'SingleKernelSVC.pkl')))
+                        pickle_out = open(pickle_out_filename, 'wb')
+                        pickle.dump(best_svc_dict, pickle_out)
+                        pickle_out.close()
+
+
                 else:
                     print("#################### Your Labels File does not exist ----- ####")
                     continue
                 logmemoryusage("Before garbage collect")
-
-            # create features - first HMM and second some Market Features!
-
-            pickle_out_filename = os.path.join(mainPath, "ExperimentCommonLocs/FittedModels", "_".join(
-                (symbol, 'model_fit_date', str(key), str(alternate_labels_nos[label_idx]), 'SingleKernelSVC.pkl')))
-            pickle_out = open(pickle_out_filename, 'wb')
-            pickle.dump(best_svc_dict, pickle_out)
-            pickle_out.close()
+        print(best_svc_dict[symbol][key])
 
 
-    with multiprocessing.Pool(processes=18) as process_pool:
+
+    with multiprocessing.Pool(processes=6) as process_pool:
         process_pool.starmap(parallised_function, itertools.product(symbols, alternate_labels_nos))
