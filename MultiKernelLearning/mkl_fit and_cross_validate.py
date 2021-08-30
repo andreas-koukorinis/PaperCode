@@ -27,6 +27,7 @@ from MKLpy.algorithms import AverageMKL, EasyMKL, \
 
 from fileutils import new_feature_utils as nfu
 from fileutils.new_feature_utils import CreateMarketFeatures
+import multiprocessing
 
 
 def open_pickle_filepath(pickle_file):
@@ -55,12 +56,13 @@ if __name__ == '__main__':
 
     mklOOSPredictionPath = os.path.join(mainPath, "ExperimentCommonLocs/MKLOOSPredictions")
     allFiles = os.listdir(jointFeatureLocation)
-    # needs to be parallelised from here
 
-    for file in allFiles:  # pick a file- any file
 
+    # for file in allFiles:  # pick a file- any file
+    def parallelised_function(file):
         select_file_path = os.path.join(jointFeatureLocation, file)  # formulate the path
         print('Symbol:----->', file.split("_")[0])
+        symbol = file.split("_")[0]
 
         select_hmm_date = select_file_path.split("_")[3]  # pull out the hmm_date - strip it out
 
@@ -116,60 +118,67 @@ if __name__ == '__main__':
 
                             Ytr = torch.Tensor(y_train.values)  # put the labels in a tensor format
                             print('-----------------first bit done------------------')
-                            KLrbf = generators.RBF_generator(Xtr, gamma=[.01,
-                                                                         .1])  # get a few RBF Kernels ready - maybe need more here
+                            KLrbf = generators.RBF_generator(Xtr, gamma=[.01, .1, .25,
+                                                                         .5])  # get a few RBF Kernels ready - maybe need more here
                             print('done with kernel')
+                            best_results = {}
 
-                            #             # base learner- use c =1 or 10
-                            #             # the c and lambda values need to be picked up by the cross-val results !
+                            C_range = [0.1, 1]
+                            lam_range = [0.2]
+                            try:
+
+                                for C_choice in C_range:
+                                    base_learner = SVC(C=C_choice)  # "hard"-margin svm
+                                    # clf = EasyMKL(lam=0.2, multiclass_strategy='ova', learner=base_learner).fit(KLrbf,
+                                    #                                                                             Ytr)
+                                    # print('done')
+                                    # print('the combination weights are:')
+                                    #
+                                    # for sol in clf.solution:
+                                    #     print('(%d vs all): ' % sol,
+                                    #           clf.solution[
+                                    #               sol].weights)  # need to store these results somewhere
+
+                                    for lam in lam_range:  # possible lambda values for the EasyMKL algorithm
+                                        # MKLpy.model_selection.cross_val_score performs the cross validation automatically, it may returns
+                                        # accuracy, auc, or F1 scores
+                                        scores = cross_val_score(KLrbf, Ytr, EasyMKL(learner=base_learner, lam=lam),
+                                                                 n_folds=5,
+                                                                 scoring='accuracy')  # get the cross-validation scores
+                                        acc = np.mean(scores)
+                                        if not best_results or best_results['score'] < acc:
+                                            best_results = {'C': C_choice, 'lam': lam, 'score': acc,
+                                                            'scores': scores}  # these should get dumped somewhere
+                                print('done')
+                                best_learner = SVC(C=best_results['C'])
+                                clf = EasyMKL(learner=best_learner, lam=best_results['lam']).fit(KLrbf, Ytr)
+                                y_pred = clf.predict(KLrbf)
+                                accuracy = accuracy_score(Ytr, y_pred)
+                                print('accuracy on the test set: %.3f, with lambda=%.2f' % (
+                                    accuracy, best_results['lam']))
+                                print(scores)
+
+                                pickle_out_filename = os.path.join(mainPath,
+                                                                   "ExperimentCommonLocs/CrossValidationResults",
+                                                                   "_".join(
+                                                                       (symbol, 'feature_label_date',
+                                                                        str(select_feature_label_date),
+                                                                        str(select_label_idx), 'hmm_date:',
+                                                                        hmm_date_key, 'RBF',
+                                                                        'MultiKernelSVC.pkl')))
+                                # pickle_out = open(pickle_out_filename, 'wb')
+                                # pickle.dump(best_results, pickle_out)
+                                # pickle_out.close()
 
 
-
-                            C_range = [0.1, 1, 10, 100]
-                            lam_range = [0, 0.01, 0.1, 0.2, 0.9]
-                            # parallelization should start here
-                            # with multiprocessing.Pool(processes=4) as process_pool:
-                            #     process_pool.starmap(mkl_learning_parallel, itertools.product(C_range, lam_range))
-
-                            def mkl_learning_parallel(C_choice, lam):
-                                best_results = {}
-                            # for C_choice in C_range:
-                                base_learner = SVC(C=C_choice)  # "hard"-margin svm
-                                # clf = EasyMKL(lam=0.2, multiclass_strategy='ova', learner=base_learner).fit(KLrbf,
-                                #                                                                             Ytr)
-                                # print('done')
-                                # print('the combination weights are:')
-                                #
-                                # for sol in clf.solution:
-                                #     print('(%d vs all): ' % sol,
-                                #           clf.solution[
-                                #               sol].weights)  # need to store these results somewhere
-
-                                # for lam in lam_range:  # possible lambda values for the EasyMKL algorithm
-                                    # MKLpy.model_selection.cross_val_score performs the cross validation
-                                    # automatically, it may returns accuracy, auc, or F1 scores
-                                    scores = cross_val_score(KLrbf, Ytr, EasyMKL(learner=base_learner, lam=lam),
-                                                             n_folds=5,
-                                                             scoring='accuracy')  # get the cross-validation scores
-                                    acc = np.mean(scores)
-                                    if not best_results or best_results['score'] < acc:
-                                        best_results = {'C': C_choice, 'lam': lam,
-                                                        'score': acc}  # these should get dumped somewhere
-                                    print('done')
-                                    # anything below this point is kind of redundant -its a simple evaluation of the solution!
-                                    best_learner = SVC(C=best_results['C'])
-                                    clf = EasyMKL(learner=best_learner, lam=best_results['lam']).fit(KLrbf, Ytr)
-                                    y_pred = clf.predict(KLrbf)
-                                    accuracy = accuracy_score(Ytr, y_pred)
-                                    print('accuracy on the test set: %.3f, with lambda=%.2f' % (
-                                        accuracy, best_results['lam']))
-
-
-                            # except ValueError:
-                            #     continue
+                            except ValueError:
+                                continue
 
 
                 else:
                     print('PROBLEM----->in one of of your locations')
+                    continue
 
-                # forward_Dates_List =(sorted(forward_Dates(feature_label_keys, feature_label_date)))
+
+    with multiprocessing.Pool(processes=8) as process_pool:
+        process_pool.map(parallelised_function, allFiles)
