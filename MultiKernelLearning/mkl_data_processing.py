@@ -118,7 +118,7 @@ if __name__ == '__main__':
                                                                                   "feature_date", str(feature_date),
                                                                                   "label_id:", str(label_idx),
                                                                                   'ProcessedData.pkl')))
-                pickle_out = open(pickle_out_filename, 'wb')
-                pickle.dump(featuresLabelsLocations, pickle_out)
-                pickle_out.close()
+                # pickle_out = open(pickle_out_filename, 'wb')
+                # pickle.dump(featuresLabelsLocations, pickle_out)
+                # pickle_out.close()
                 print('Data stored:', pickle_out_filename)
