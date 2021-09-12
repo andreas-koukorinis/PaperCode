@@ -54,7 +54,7 @@ if __name__ == '__main__':
                 Xtr = normalization(rescale_01(torch.Tensor(pkl_file[date][0].values)))
                 Ytr = torch.Tensor(pkl_file[date][1].values)
                 print('first bit done')
-                nalsvm.gc.collect()
+            nalsvm.gc.collect()
                 KLrbf = generators.RBF_generator(Xtr, gamma=[.001, .01, .1])
                 print('done with kernel')
                 nalsvm.gc.collect()
