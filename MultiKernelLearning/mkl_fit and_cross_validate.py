@@ -166,9 +166,9 @@ if __name__ == '__main__':
                                                                         str(select_label_idx), 'hmm_date:',
                                                                         hmm_date_key, 'RBF',
                                                                         'MultiKernelSVC.pkl')))
-                                pickle_out = open(pickle_out_filename, 'wb')
-                                pickle.dump(best_results, pickle_out)
-                                pickle_out.close()
+                                # pickle_out = open(pickle_out_filename, 'wb')
+                                # pickle.dump(best_results, pickle_out)
+                                # pickle_out.close()
 
 
                             except ValueError:

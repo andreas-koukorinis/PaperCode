@@ -146,7 +146,7 @@ class DataLoader(object):
         """
         labels_numbers = {1: 'LabelsAlternateOne', 2: 'LabelsAlternateTwo', 3: 'LabelsAlternateThree',
                           4: 'LabelsAlternateFour', 5: 'LabelsAlternateFive', 6: 'LabelsAlternateSix',
-                          7: 'LabelsAlternateSeven'}
+                          }
         return os.path.join(self.main_labels_path, labels_numbers[label_number], self.symbol)
 
     def symbol_specific_labels_dates(self, label_number):
