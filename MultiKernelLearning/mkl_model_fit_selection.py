@@ -38,11 +38,12 @@ from collections import defaultdict
 import os
 import multiprocessing
 import psutil
+import itertools
 import pickle
 from collections import defaultdict
 import itertools
 import time
-
+import gc
 from MKLpy.scheduler import ReduceOnWorsening
 from MKLpy.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
@@ -96,115 +97,133 @@ alternate_labels_nos = {1: "LabelsAlternateOne", 2: "LabelsAlternateTwo", 3: "La
                         6: "LabelsAlternateSix"}  # we have 7 alternative data types
 
 
-def outer_loop_function(hmm_date):
-    # this is the usual loop but we are writing it as a function so I can parallelise it
+def fitting_function_mkl(key):
+    print('For key: ', key, '############')
+    labels_file_path = os.path.join(symbolData.symbol_specific_label_path(label_idx), key + ".csv")
+    print(os.path.isfile(labels_file_path))
+    output_dict = defaultdict(dict)
 
-    hmm_features_date_path = os.path.join(symbolData.symbol_features_path, hmm_date)
-    symbol_feature_paths = {feature_file.split("_")[5]: os.path.join(hmm_features_date_path, feature_file) for
-                            f, feature_file in enumerate(sorted(os.listdir(hmm_features_date_path)))}
-    keys = sorted(list(symbol_feature_paths.keys()))
-    print('For hmm date: ', hmm_date, '###########')
-    for key in keys:
-
-        print('For key: ', key, '############')
-
-        labels_file_path = os.path.join(symbolData.symbol_specific_label_path(label_idx), key + ".csv")
-        output_dict = defaultdict(dict)
-
-        if os.path.isfile(labels_file_path):  # check that this is a real path
-            print("can train")
-            print(" reading labels")  # this is the labels path!
-            labels = pd.read_csv(labels_file_path)
-            label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
-            logmemoryusage("Before garbage collect")
-            hmm_features = nfu.hmm_features_df(open_pickle_filepath(symbol_feature_paths[key]))
-            if hmm_features.isnull().values.all():  # checking that the HMM features are actually not null
-                continue
-                print('lots of NaNs on features')
-            else:  # if features not null then start moving on!
-                market_features_df = CreateMarketFeatures(
-                    CreateMarketFeatures(
-                        CreateMarketFeatures(df=CreateMarketFeatures(df=labels).ma_spread_duration())
-                            .ma_spread()).chaikin_mf()).obv_calc()  # market features dataframe
-
-                df_concat = pd.DataFrame(
-                    pd.concat([hmm_features, market_features_df], axis=1, sort='False').dropna())
-
-                df = df_concat[df_concat[label_name].notna()]
-                df_final = df.drop(
-                    columns=['TradedPrice', 'Duration', 'TradedTime', 'ReturnTradedPrice', 'Volume',
-                             label_name])
-
-                y_train = df.reindex(columns =df.columns[df.columns.str.contains(pat='label')])   # training labels
-                if df_final.shape[0] < 10:
-                    print(' the ratio of classes is too low. try another label permutation')
-                    problem_dict[hmm_date][key] = str(key)
-                    continue
-                else:
-                    try:
-                        print("starting model fit")
-                        Xtr, Xte, Ytr, Yte = train_test_split(df_final, y_train, test_size=.5, random_state=42)
-                        # training
-                        arrXtr = np.array(Xtr)
-                        X_tr = normalization(rescale_01(arrXtr))
-                        Y_tr = torch.Tensor(Ytr.values.ravel())
-
-                        # testing
-
-                        arrXte = np.array(Xte)
-                        X_te = normalization(rescale_01(arrXte))
-                        Y_te = torch.Tensor(Yte.values.ravel())
-
-                        KLtr = [pairwise.homogeneous_polynomial_kernel(X_tr, degree=d) for d in range(1, 21)] + [
-                            identity_kernel(len(Ytr))]
-                        KLte = [pairwise.homogeneous_polynomial_kernel(X_te, X_tr, degree=d) for d in range(1, 21)]
-                        KLte.append(torch.zeros(KLte[0].size()))
-
-                        print('tuning lambda for EasyMKL...', end='')
-                        base_learner = SVC(C=0.1)  # "soft"-margin svm
-                        best_results = {}
-                        lam = 0.1  # possible lambda values for the EasyMKL algorithm
-                        # MKLpy.model_selection.cross_val_score performs the cross validation automatically,
-                        # it may returns accuracy, auc, or F1 scores
-                        scores = cross_val_score(KLtr, Y_tr, EasyMKL(learner=base_learner, lam=lam), n_folds=5,
-                                                 scoring='accuracy')
-                        acc = np.mean(scores)
-                        # if not best_results or best_results['score'] < acc:
-                        #     best_results = {'lam': lam, 'score': acc}
-                        # evaluation on the test set
-                        from sklearn.metrics import accuracy_score
-                        print('done')
-                        clf = EasyMKL(learner=base_learner, lam=lam).fit(KLtr, Ytr)
-                        y_pred = clf.predict(KLte)
-                        accuracy = accuracy_score(Y_te, y_pred)
-                        print('accuracy on the test set: %.3f, with lambda=%.2f' % (accuracy, best_results['lam']))
-                    except ValueError:
-                        continue
-                        logmemoryusage("at the end")
-
-        else:
-            print("#################### Your Labels File does not exist ----- ####")
-        continue
+    if os.path.isfile(labels_file_path):  # check that this is a real path
+        print(" reading labels")  # this is the labels path!
+        labels = pd.read_csv(labels_file_path)
+        label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
         logmemoryusage("Before garbage collect")
+        hmm_features = nfu.hmm_features_df(open_pickle_filepath(symbol_feature_paths[key]))
+
+        if hmm_features.isnull().values.all():  # checking that the HMM features are actually not null
+            pass
+            print('lots of NaNs on features')
+        else:  # if features not null then start moving on!
+            print("can train")
+            market_features_df = CreateMarketFeatures(
+                CreateMarketFeatures(
+                    CreateMarketFeatures(df=CreateMarketFeatures(df=labels).ma_spread_duration())
+                        .ma_spread()).chaikin_mf()).obv_calc()  # market features dataframe
+
+            df_concat = pd.DataFrame(
+                pd.concat([hmm_features, market_features_df], axis=1, sort='False').dropna())
+
+            df = df_concat[df_concat[label_name].notna()]
+            df_final = df.drop(
+                columns=['TradedPrice', 'Duration', 'TradedTime', 'ReturnTradedPrice', 'Volume',
+                         label_name])
+
+            y_train = df.reindex(columns=df.columns[df.columns.str.contains(pat='label')])  # training labels
+            print('go to the labels')
+
+            if df_final.shape[0] < 10:
+                print(' the ratio of classes is too low. try another label permutation')
+                # problem_dict[hmm_date][key] = str(key)
+                pass
+            else:
+                print("starting model fit")
+
+                Xtr, Xte, Ytr, Yte = train_test_split(df_final, y_train, test_size=.2, random_state=42)
+                # training
+                arrXtr = np.array(Xtr)
+                X_tr = normalization(rescale_01(arrXtr))
+                Y_tr = torch.Tensor(Ytr.values.ravel())
+
+                # testing
+
+                arrXte = np.array(Xte)
+                X_te = normalization(rescale_01(arrXte))
+                Y_te = torch.Tensor(Yte.values.ravel())
+
+                KLtr = [pairwise.homogeneous_polynomial_kernel(X_tr, degree=d) for d in range(1, 11)] + [
+                    identity_kernel(len(Ytr))]
+                KLte = [pairwise.homogeneous_polynomial_kernel(X_te, X_tr, degree=d) for d in range(1, 11)]
+                KLte.append(torch.zeros(KLte[0].size()))
+                print('done with kernel')
+                try:
+                    lam_values = [0.1, 0.2, 1]
+                    best_results = {}
+                    C_range = [0.1, 1]
+                    for C_ch in C_range:
+                        base_learner = SVC(C=C_ch)  # "soft"-margin svm
+                        print(' fitted the base learner')
+                        # possible lambda values for the EasyMKL algorithm
+                        for lam in lam_values:
+                            print('now here', lam)
+                            print(' and tuning lambda for EasyMKL...', end='')
+                            base_learner = SVC(C=C_ch)  # "soft"-margin svm
+                            # MKLpy.model_selection.cross_val_score performs the cross validation automatically,
+                            # it may returns accuracy, auc, or F1 scores
+                            scores = cross_val_score(KLtr, Y_tr, EasyMKL(learner=base_learner, lam=lam), n_folds=5,
+                                                     scoring='accuracy')
+                            acc = np.mean(scores)
+                            if not best_results or best_results['score'] < acc:
+                                best_results = {'lam': lam, 'score': acc}
+                            # evaluation on the test set
+
+                            print('done', best_results)
+                            cv_dict_list[(symbol, hmm_date, label_idx)][(lam, C_ch)] = [scores, best_results]
+                            print(cv_dict_list)
+
+                            pickle_out_filename = os.path.join(mainPath, "ExperimentCommonLocs/MKLFittedModels", "_".join(
+                                (symbol, 'model_fit_date', str(key), str(alternate_labels_nos[label_idx]),
+                                 'MultiKernelSVC.pkl')))
+                            print(pickle_out_filename)
+
+                            pickle_out = open(pickle_out_filename, 'wb')
+
+                            pickle.dump(cv_dict_list, pickle_out)
+                            pickle_out.close()
+
+                except (ValueError, TypeError, EOFError):
+                    pass
 
 
 if __name__ == '__main__':
-    symbol_idx = 16  # pick a symbol - will need to iterate over a number of symbols
-    symbol = sorted(symbols)[symbol_idx]  # to be serialised so read all the symbols
+
+    symbol_idx = 14  # pick a symbol - will need to iterate over a number of symbols
+    label_idx = 1  # takes number 1 to 6
+
+    symbol = symbols[symbol_idx]  # to be serialised so read all the symbols
+
     print(symbol)
 
     symbolData = DataLoader(mainPath, symbol)  # initiate a path where all the data should be
 
-    label_idx = 1  # takes number 1 to 3
-
     labelsLocation = labelsAlternateLocs[alternate_labels_nos[label_idx]]
 
     labelsPath = os.path.join(labelsLocation, symbol)
-
+    hmm_dates = sorted(symbolData.hmm_dates_list)
     start_time = time.time()
+    # this is the usual loop but we are writing it as a function so I can parallelise it
+    cv_dict_list = defaultdict(dict)  # where the results are stored
+    for hmm_date in hmm_dates:
+        print(hmm_date)
 
-    with multiprocessing.Pool(processes=8) as process_pool:
-        process_pool.map(outer_loop_function, sorted(symbolData.hmm_dates_list))
-    current_time = time.time()
-    elapsed_time = current_time - start_time
-    print('elapsed time', elapsed_time)
+        hmm_features_date_path = os.path.join(symbolData.symbol_features_path, hmm_date)
+
+        if os.path.isdir(hmm_features_date_path):
+            symbol_feature_paths = {feature_file.split("_")[5]: os.path.join(hmm_features_date_path, feature_file) for
+                                    f, feature_file in enumerate(sorted(os.listdir(hmm_features_date_path)))}
+            keys = sorted(list(symbol_feature_paths.keys()))
+            print('For hmm date: ', hmm_date, '###########')
+            for key in keys:
+                fitting_function_mkl(key)
+
+        else:
+            pass
