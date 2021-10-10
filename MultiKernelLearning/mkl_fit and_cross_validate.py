@@ -30,10 +30,6 @@ from fileutils.new_feature_utils import CreateMarketFeatures
 import multiprocessing
 
 
-def open_pickle_filepath(pickle_file):
-    pickle_to_file = pickle.load(open(pickle_file, "rb"), encoding='latin1')
-
-    return pickle_to_file
 
 
 def forward_Dates(list_of_keys, current_date):

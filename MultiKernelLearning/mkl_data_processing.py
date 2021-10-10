@@ -12,7 +12,7 @@ sys.path.append('/home/ak/Documents/Research/PaperCode/singlekernelclf')
 from fileutils import DataLoader as DataLoader
 from fileutils import paths
 from collections import defaultdict
-
+import psutil
 import jsonpickle
 
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score, precision_score, hamming_loss
@@ -83,6 +83,29 @@ def jsonpickle_store_obj(obj, filename_location):
     f.write(obj_str)
     f.close()
     print('encoded and saved in :', filename_location)
+
+def open_pickle_filepath(pickle_file):
+    pickle_to_file = pickle.load(open(pickle_file, "rb"), encoding='latin1')
+
+    return pickle_to_file
+
+
+def forward_Dates(list_of_keys, current_date):
+    """
+    return all the forward looking dates for each idxKey we use for training
+
+    :param list_of_keys: dates i have model dates for out of sample
+    :param current_date: current model date
+    :return: forward dates for applying the fitted model
+    """
+    lookAheadKeys = sorted(i for i in list_of_keys if i > current_date)
+    return lookAheadKeys
+
+
+def logmemoryusage(msg):
+    # function to log memory usage
+    process = psutil.Process(os.getpid())
+    print('Memory usage at %s is %smb.' % (msg, process.memory_info().rss / 1000 / 1000))
 
 
 if __name__ == '__main__':

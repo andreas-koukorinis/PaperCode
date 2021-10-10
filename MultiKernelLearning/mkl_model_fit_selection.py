@@ -151,7 +151,7 @@ def fitting_function_mkl(key):
                 Y_te = torch.Tensor(Yte.values.ravel())
 
                 KLtr = [pairwise.homogeneous_polynomial_kernel(X_tr, degree=d) for d in range(1, 11)] + [
-                    identity_kernel(len(Ytr))]
+                    identity_kernel(len(Y_tr))]
                 KLte = [pairwise.homogeneous_polynomial_kernel(X_te, X_tr, degree=d) for d in range(1, 11)]
                 KLte.append(torch.zeros(KLte[0].size()))
                 print('done with kernel')
@@ -196,8 +196,8 @@ def fitting_function_mkl(key):
 
 if __name__ == '__main__':
 
-    symbol_idx = 14  # pick a symbol - will need to iterate over a number of symbols
-    label_idx = 1  # takes number 1 to 6
+    symbol_idx = 17  # pick a symbol - will need to iterate over a number of symbols
+    label_idx = 2 # takes number 1 to 6
 
     symbol = symbols[symbol_idx]  # to be serialised so read all the symbols
 
