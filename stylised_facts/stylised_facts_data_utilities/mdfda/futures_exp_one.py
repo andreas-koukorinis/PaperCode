@@ -4,10 +4,12 @@ import os
 import matplotlib.pyplot as plt
 
 dataFolder = lobFut.dataFolder
-
+quotes =[f for f in os.listdir(dataFolder) if str('_quotes') in f]
+trades =[f for f in os.listdir(dataFolder) if str('_trades') in f]
 
 if __name__ == '__main__':
     symbolIdx = 4
+    symbols = [f.split("_")[0] for f in quotes]
 
     symbol = sorted(symbols)[symbolIdx]
     print(symbol)
@@ -78,34 +80,4 @@ if __name__ == '__main__':
     df_ret = returns(bars[barsKeys[3]].micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # calendar
     bar_returns = [tr, vr, dr, df_ret]
     bar_types = ['tick', 'volume', 'dollar', 'calendar']
-
-    fig, ax = plt.subplots(figsize=(10, 7))
-    sns.kdeplot(tr,
-                ax=ax,
-                label="Tick",
-                bw=0.25,
-                color='darkblue')
-    sns.kdeplot(dr,
-                ax=ax,
-                label="USD Volume",
-                bw=0.55, linewidth=2.25,
-                color='blue', linestyle=':')
-
-    sns.kdeplot(vr,
-                ax=ax,
-                label="Volume",
-                bw=0.55, linewidth=1.25,
-                color='red', linestyle='--')
-
-    plt.xlabel('Returns', fontsize=9)
-    plt.ylabel('Density', fontsize=9)
-    plt.xticks(fontsize=9, rotation=45)
-    plt.yticks(fontsize=9)
-    plt.title(str(symbol))
-    file_name = str(hash_of_file) + '_multiclocks_density_plot.png'
-    plt.savefig(os.path.join(figures_destination, file_name))
-    plt.legend()
-    plt.show()
-
-
 
