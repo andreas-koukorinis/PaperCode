@@ -95,8 +95,8 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 
 if __name__ == '__main__':
 
-    symbol_idx = 21 # pick a symbol in the list
-    label_idx = 2 # pick a label
+    symbol_idx = 6 # pick a symbol in the list
+    label_idx = 3 # pick a label
     symbol = symbols[symbol_idx]
     C_choice = 0.1
     lam = 0.1 # lam = 0.2 based on cross-validation
@@ -195,7 +195,7 @@ if __name__ == '__main__':
                                                 pass
                                          else:
                                                 print('...and can do damage!')
-                                                chunk_size = int(Xte.shape[0] / 3)
+                                                chunk_size = int(Xte.shape[0] / 7)
                                                 for start in range(0, Xte.shape[0], chunk_size):
                                                     X_te_subset = Xte.iloc[start:start+chunk_size]
                                                     Y_te_subset = Yte.iloc[start:start+chunk_size]
@@ -231,20 +231,21 @@ if __name__ == '__main__':
                                                         # key and forward OOS Date
                                                         chunk_list[start+chunk_size] = mkldp.evaluate_predictions(Y_te, Y_pred)
                                                         print('done chunk: ', start+chunk_size)
-                                                    except (ValueError, TypeError, EOFError, IndexError):
+                                                        oos_mkl_results[key][forward_date, (start+chunk_size)] = chunk_list
+                                                        oos_hash_file = "".join((str(symbol),'_',
+                                                                              'SimpleMKL_poly_kernel','_Label_idx:_'+str(label_idx)+'_',str(key),'_',
+                                                                              'OOS_Date_',str(forward_date),'.pkl' ))
+
+                                                        pickle_out_filename = os.path.join(mklOOSPredictionPathSpecific,str(symbol), oos_hash_file)
+                                                        print('about to save to... ', pickle_out_filename)
+                                                        pickle_out = open(pickle_out_filename, 'wb')
+                                                        pickle.dump(oos_mkl_results, pickle_out)
+                                                        pickle_out.close()
+                                                    except (ValueError, TypeError, EOFError, IndexError, FileNotFoundError):
                                                         continue
 
-                                                oos_mkl_results[key][forward_date, (start+chunk_size)] = chunk_list
-                                                oos_hash_file = "".join((str(symbol),'_',
-                                                                         'SimpleMKL_poly_kernel','_Label_idx:'+str(label_idx),str(key),'_',
-                                                                         'OOS_Date_',str(forward_date),'.pkl' ))
 
-                                                pickle_out_filename = os.path.join(mklOOSPredictionPathSpecific, oos_hash_file)
-                                                print('about to save to... ', pickle_out_filename)
-                                                pickle_out = open(pickle_out_filename, 'wb')
-                                                pickle.dump(oos_mkl_results, pickle_out)
-                                                pickle_out.close()
-                            except (ValueError, TypeError, EOFError, IndexError):
+                            except (ValueError, TypeError, EOFError, IndexError, FileNotFoundError):
 
                                 continue
 
