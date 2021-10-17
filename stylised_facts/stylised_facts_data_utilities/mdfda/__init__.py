@@ -3,7 +3,7 @@ from numpy import cumsum, polyfit, polyval, mean, sqrt, arange, zeros, nan
 from numpy.lib.stride_tricks import as_strided as ast
 import matplotlib.pyplot as plt
 from numpy.polynomial.polynomial import polyval as mpolyval, polyfit as mpolyfit
-
+import numpy as np
 
 """
 The 'pymdfa' module
@@ -106,11 +106,11 @@ def compFq(rms, qs):
 
     """
     out = zeros((rms.shape[0], len(qs)), 'f8')
-    mRMS = ma.array(rms, mask=isnan(rms))
-    for qi in xrange(len(qs)):
+    mRMS = np.ma.array(rms, mask=np.isnan(rms))
+    for qi in np.xrange(len(qs)):
         p = qs[qi]
         out[:, qi] = (mRMS ** p).mean(1) ** (1.0 / p)
-    out[:, qs == 0] = exp(0.5 * (log(mRMS ** 2.0)).mean(1))[:, None]
+    out[:, qs == 0] = np.exp(0.5 * (np.log(mRMS ** 2.0)).mean(1))[:, None]
     return out
 
 def compRMS(X, scales, m=1, verbose=False):

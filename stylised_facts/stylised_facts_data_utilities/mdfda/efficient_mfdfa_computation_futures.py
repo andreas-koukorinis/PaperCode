@@ -8,7 +8,6 @@ from lob_for_futures import *
 import os
 import matplotlib.pyplot as plt
 
-
 from dateutil.parser import parse
 from pandas.tseries.offsets import BDay
 import pickle as pkl
@@ -26,23 +25,24 @@ from scipy.stats import entropy
 from scipy.spatial.distance import jensenshannon
 from scipy.special import kl_div
 import time
-dataFolder = lobFut.dataFolder
-quotes =[f for f in os.listdir(dataFolder) if str('_quotes') in f]
-trades =[f for f in os.listdir(dataFolder) if str('_trades') in f]
 
-symbolIdx = 2
+dataFolder = lobFut.dataFolder
+quotes = [f for f in os.listdir(dataFolder) if str('_quotes') in f]
+trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
+
+# symbolIdx = 0
 
 symbols = [f.split("_")[0] for f in quotes]
-
-symbol = sorted(symbols)[symbolIdx]
-print(symbol)
-quotesFileCh = os.path.join(dataFolder, quotes[symbolIdx])
-tradesFileCh = os.path.join(dataFolder, trades[symbolIdx])
-
-# get common Dates
-quotesDates = sorted([f.split(".csv")[0] for f in os.listdir(quotesFileCh)])
-tradesDates = sorted([f.split(".csv")[0] for f in os.listdir(tradesFileCh)])
-intersectionDates = list(set(quotesDates).intersection(tradesDates))
+#
+# symbol = sorted(symbols)[symbolIdx]
+# print(symbol)
+# quotesFileCh = os.path.join(dataFolder, quotes[symbolIdx])
+# tradesFileCh = os.path.join(dataFolder, trades[symbolIdx])
+#
+# # get common Dates
+# quotesDates = sorted([f.split(".csv")[0] for f in os.listdir(quotesFileCh)])
+# tradesDates = sorted([f.split(".csv")[0] for f in os.listdir(tradesFileCh)])
+# intersectionDates = list(set(quotesDates).intersection(tradesDates))
 
 trades_cols = ['size', 'time', 'type', 'value']
 experimentsDestination = '/media/ak/T7/MFDFA Experiments'
@@ -51,7 +51,8 @@ if __name__ == '__main__':
     # params i need for fathon
     winSizes = fu.linRangeByStep(5, 60)
     revSeg = True
-    polOrd = 1
+    qs = np.arange(-3, 4, 0.1)
+    polOrd = 3
     # load all teh dataframes at once with this
     start = time.time()
     print(start)
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
     h_dict = defaultdict(dict)
 
-    symbolIdx = 0
+    symbolIdx = 2
 
     symbol = sorted(symbols)[symbolIdx]
     print(symbol)
@@ -104,6 +105,14 @@ if __name__ == '__main__':
     dates = list(input_dict.keys())
 
     bar_returns = dict()
+    # -storage locations! -
+    mfdfa_n_F_dict = defaultdict(dict)
+    mfdfa_H_dict = defaultdict(dict)
+    mfdfa_tau_dict = defaultdict(dict)
+    mfdfa_alpha_spect = defaultdict(dict)
+    dict_dfa = defaultdict(dict)
+    h_dict = defaultdict(dict)
+
     for date in dates:
         df = testClass.load_and_format_data()[str(date)]
         input_dict = testClass.get_bars(df)
@@ -119,12 +128,30 @@ if __name__ == '__main__':
                              'volume': vr,
                              'dollar': dr,
                              'calendar': df_ret}
-    dict_dfa = defaultdict(dict)
+
     for i, j in itertools.product(['tick', 'volume', 'dollar', 'calendar'], dates):
         data = (bar_returns[j][i])
         a = fu.toAggregated(np.asanyarray(data))
-        pydfa = fathon.DFA(a)
+        # MFDFA Computations
         pymfdfa = fathon.MFDFA(a)
+        n, F = pymfdfa.computeFlucVec(winSizes, qs, revSeg=revSeg, polOrd=polOrd)
+
+        mfdfa_n_F_dict[j][i]['n,F'] = dict(zip(n, F))
+        # dictionary to match all the n and F values this could be
+        # more efficient
+
+        # get the list values of H and intercept
+        list_H, list_H_intercept = pymfdfa.fitFlucVec()  # same for H values
+        mfdfa_H_dict[j][i] = [list_H, H_intercept]
+
+        # get the mass exponents
+        tau = pymfdfa.computeMassExponents()
+        mfdfa_tau_dict[j][i] = tau
+
+        # get the multi-fractal spectrum
+        alpha, mfSpect = pymfdfa.computeMultifractalSpectrum()
+        mfdfa_alpha_spect[j][i] = [mfSpect, alpha]
+        pydfa = fathon.DFA(a)
         n, F = pydfa.computeFlucVec(winSizes, revSeg=revSeg, polOrd=polOrd)
         dict_dfa[j][i] = dict(zip(n, F))  # dictionary to match all the n and F values
 
@@ -133,22 +160,67 @@ if __name__ == '__main__':
 
         print('for date', j, ' and bar type', i, 'you get', H)
 
-        # everything below here is to store
+    # everything below here is to store
+    # saving DFA files first
+
+    # -1-
 
     pickle_out_filename = os.path.join(experimentsDestination, symbol, 'DFA_' +
-                                       'n_f_values' +"volume_width"+ str(trade_volume_width)
-                                       + "calendar_resample"+ str(calendar_resample_freq)+
+                                       'n_f_values' + "volume_width" + str(trade_volume_width)
+                                       + "calendar_resample" + str(calendar_resample_freq) +
                                        '_bar_' + str(i) + '_' + str(j) + '.pkl')
+
     pickle.dump(dict_dfa, open(pickle_out_filename, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
     print('just saved: ', pickle_out_filename)
 
+    # -2- saving the DFA n_f Values
     pickle_out_filename_two = os.path.join(experimentsDestination, symbol, 'DFA_' +
-                                       'n_f_values' +"volume_width"+ str(trade_volume_width)
-                                       + "calendar_resample"+ str(calendar_resample_freq)+
-                                       '_bar_' +
-                                       'H_values' + '_bar_' + str(i) + '_' + str(j) + '.pkl')
+                                           'n_f_values' + "volume_width" + str(trade_volume_width)
+                                           + "calendar_resample" + str(calendar_resample_freq) +
+                                           '_bar_' +  str(i) + '_' + str(j) + '.pkl')
+
+
     pickle.dump(h_dict, open(pickle_out_filename_two, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-    print('just saved: ', pickle_out_filename_two)
 
+    # saving MFDFA files next
 
+    # -3-  Saving the mfdfa _n_f_values
+    pickle_out_filename_three = os.path.join(experimentsDestination, symbol, 'MDFA_' +
+                                             'n_f_values' + "volume_width" + str(trade_volume_width)
+                                             + "calendar_resample" + str(calendar_resample_freq) +
+                                             '_bar_' + str(i) + '_' + str(j) + '.pkl')
 
+    pickle.dump(mfdfa_n_F_dict, open(pickle_out_filename_three, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    # saving mfdfa tau -mass exponent
+
+    print('just saved: ', pickle_out_filename_three)
+    # -4- Saving the tau-dict
+    pickle_out_filename_four = os.path.join(experimentsDestination, symbol, 'MDFA_' +
+                                            'TAU_DICT' + "volume_width" + str(trade_volume_width)
+                                            + "calendar_resample" + str(calendar_resample_freq) +
+                                            '_bar_' + str(i) + '_' + str(j) + '.pkl')
+
+    pickle.dump(mfdfa_tau_dict, open(pickle_out_filename_four, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+    print('just saved: ', pickle_out_filename_four)
+
+    # -5 - Saving the alpha_spect
+    pickle_out_filename_five = os.path.join(experimentsDestination, symbol, 'MDFA_' +
+                                            'alpha_spect' + "volume_width" + str(trade_volume_width)
+                                            + "calendar_resample" + str(calendar_resample_freq) +
+                                            '_bar_' + str(i) + '_' + str(j) + '.pkl')
+
+    pickle.dump(mfdfa_alpha_spect, open(pickle_out_filename_five, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+    print('just saved: ', pickle_out_filename_five)
+
+    # -6- saving mfdfa - hdict
+
+    pickle_out_filename_six = os.path.join(experimentsDestination, symbol, 'MDFA_' +
+                                           'H_dict' + "volume_width" + str(trade_volume_width)
+                                           + "calendar_resample" + str(calendar_resample_freq) +
+                                           '_bar_' + str(i) + '_' + str(j) + '.pkl')
+
+    pickle.dump(mfdfa_H_dict, open(pickle_out_filename_six, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+    print('just saved: ', pickle_out_filename_six)
