@@ -95,8 +95,8 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 
 if __name__ == '__main__':
 
-    symbol_idx = 6 # pick a symbol in the list
-    label_idx = 3 # pick a label
+    symbol_idx = 17 # pick a symbol in the list
+    label_idx = 2 # pick a label
     symbol = symbols[symbol_idx]
     C_choice = 0.1
     lam = 0.1 # lam = 0.2 based on cross-validation
@@ -241,11 +241,11 @@ if __name__ == '__main__':
                                                         pickle_out = open(pickle_out_filename, 'wb')
                                                         pickle.dump(oos_mkl_results, pickle_out)
                                                         pickle_out.close()
-                                                    except (ValueError, TypeError, EOFError, IndexError, FileNotFoundError):
+                                                    except (ValueError, TypeError,PermissionError, EOFError, IndexError, FileNotFoundError, OSError):
                                                         continue
 
 
-                            except (ValueError, TypeError, EOFError, IndexError, FileNotFoundError):
+                            except (OSError, ValueError, TypeError, EOFError, IndexError,PermissionError, FileNotFoundError):
 
                                 continue
 
