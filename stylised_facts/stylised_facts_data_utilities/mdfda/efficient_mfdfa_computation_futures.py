@@ -49,7 +49,7 @@ experimentsDestination = '/media/ak/T7/MFDFA Experiments'
 
 if __name__ == '__main__':
     # params i need for fathon
-    winSizes = fu.linRangeByStep(5, 60)
+    winSizes = fu.linRangeByStep(5, 50)
     revSeg = True
     qs = np.arange(-3, 4, 0.1)
     polOrd = 3
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     h_dict = defaultdict(dict)
 
-    symbolIdx = 2
+    symbolIdx = 9 # symbol 3 has problems
 
     symbol = sorted(symbols)[symbolIdx]
     print(symbol)
@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     # params for the clocks
 
-    calendar_resample_freq = "300S"
+    calendar_resample_freq = "200S"
     trade_volume_width = 100
     ticks_width = 100
     usd_volume_width = 100
@@ -129,20 +129,20 @@ if __name__ == '__main__':
                              'dollar': dr,
                              'calendar': df_ret}
 
-    for i, j in itertools.product(['tick', 'volume', 'dollar', 'calendar'], dates):
-        data = (bar_returns[j][i])
+    for j, i in itertools.product(['tick', 'volume', 'dollar', 'calendar'], dates):
+        data = (bar_returns[i][j])
         a = fu.toAggregated(np.asanyarray(data))
         # MFDFA Computations
         pymfdfa = fathon.MFDFA(a)
         n, F = pymfdfa.computeFlucVec(winSizes, qs, revSeg=revSeg, polOrd=polOrd)
 
-        mfdfa_n_F_dict[j][i]['n,F'] = dict(zip(n, F))
+        mfdfa_n_F_dict[j][i] = dict(zip(n, F))
         # dictionary to match all the n and F values this could be
         # more efficient
 
         # get the list values of H and intercept
         list_H, list_H_intercept = pymfdfa.fitFlucVec()  # same for H values
-        mfdfa_H_dict[j][i] = [list_H, H_intercept]
+        mfdfa_H_dict[j][i] = [list_H, list_H_intercept]
 
         # get the mass exponents
         tau = pymfdfa.computeMassExponents()
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         H, H_intercept = pydfa.fitFlucVec()  # same for H values
         h_dict[j][i] = [H, H_intercept]
 
-        print('for date', j, ' and bar type', i, 'you get', H)
+        print('for date', i, ' and bar type', j, 'you get', H)
 
     # everything below here is to store
     # saving DFA files first
@@ -175,9 +175,10 @@ if __name__ == '__main__':
 
     # -2- saving the DFA n_f Values
     pickle_out_filename_two = os.path.join(experimentsDestination, symbol, 'DFA_' +
-                                           'n_f_values' + "volume_width" + str(trade_volume_width)
+                                           'h_dict_values' + "volume_width" + str(trade_volume_width)
                                            + "calendar_resample" + str(calendar_resample_freq) +
                                            '_bar_' +  str(i) + '_' + str(j) + '.pkl')
+
 
 
     pickle.dump(h_dict, open(pickle_out_filename_two, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
