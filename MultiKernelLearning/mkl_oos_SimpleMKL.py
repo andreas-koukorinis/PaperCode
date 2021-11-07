@@ -95,10 +95,10 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 
 if __name__ == '__main__':
 
-    symbol_idx = 14 # pick a symbol in the list
+    symbol_idx = 15 # pick a symbol in the list
 
-    label_idx = 1 # pick a label #do 6 after
-    symbol = symbols[symbol_idx]
+    label_idx = 5 # pick a label #do 6 after
+    symbol = sorted(symbols)[symbol_idx]
     C_choice = 0.1
     lam = 0.1 # lam = 0.2 based on cross-validation
 
