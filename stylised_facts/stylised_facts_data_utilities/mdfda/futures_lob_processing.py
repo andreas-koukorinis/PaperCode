@@ -38,57 +38,60 @@ symbols = [f.split("_")[0] for f in quotes]
 from multiprocessing import Pool
 import pickle
 
-
-def produce_info_clock_files(date):
-    bar_returns = dict()
-    bars_dicts = defaultdict(dict)
-
-    try:
-        df = testClass.load_and_format_data()[str(date)]
-        tick_bar_df = testClass.get_concat_data(testClass._bars_dict)['tick_bars']
-        volume_bar_df = testClass.get_concat_data(testClass._bars_dict)['volume_bars']
-        usd_volume_bar_df = testClass.get_concat_data(testClass._bars_dict)['usd_volume_bars']
-        calendar_bar_df = testClass.get_concat_data(testClass._bars_dict)['calendar_bars']
-        vr = returns(volume_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # volume
-        tr = returns(tick_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # tick
-        dr = returns(usd_volume_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # usd volume
-        df_ret = returns(calendar_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # calendar
-        bar_returns[date] = {'tick': tr,
-                             'volume': vr,
-                             'dollar': dr,
-                             'calendar': df_ret}
-        bars_dicts[date]['tick'] = tick_bar_df
-        bars_dicts[date]['volume'] = volume_bar_df
-        bars_dicts[date]['calendar'] = calendar_bar_df
-        bars_dicts[date]['dollar'] = usd_volume_bar_df
-        symbolFolderToStore = os.path.join(informationClockFolder, symbol)
-
-        #  store all values
-        pickle_out_filename = os.path.join(symbolFolderToStore, str(date) + '.pkl')
-        pickle_out_filename_returns = os.path.join(symbolFolderToStore, 'Returns_' + str(date) + '.pkl')
-
-        pickle.dump(bars_dicts, open(pickle_out_filename, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-        pickle.dump(bar_returns, open(pickle_out_filename_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-
-        print('just saved: ', pickle_out_filename)
-    except KeyError:
-        pass
-
-    return bar_returns, bars_dicts
-
-
 trades_cols = ['size', 'time', 'type', 'value']
 experimentsDestination = '/media/ak/T7/MFDFA Experiments'
 plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle.mplstyle'))
 informationClockFolder = '/media/ak/T7/FuturesDataSemiProcessed'
 
+
+def produce_info_clock_files(date):
+    bar_returns = dict()
+    bars_dicts = defaultdict(dict)
+    informationClockFolder = '/media/ak/T7/FuturesDataSemiProcessed'
+
+    df = testClass.load_and_format_data()[str(date)]
+
+    input_dict = testClass.get_bars(df)
+    calendar_bar_df = (testClass.get_concat_data(testClass._bars_dict)['calendar_bars'])
+    tick_bar_df = testClass.get_concat_data(testClass._bars_dict)['tick_bars']
+    volume_bar_df = (testClass.get_concat_data(testClass._bars_dict)['volume_bars'])
+    usd_volume_bar_df = testClass.get_concat_data(testClass._bars_dict)['usd_volume_bars']
+    vr = returns(volume_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # volume
+    tr = returns(tick_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # tick
+    dr = returns(usd_volume_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # usd volume
+    df_ret = returns(calendar_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # calendar
+    bar_returns[date] = {'tick': tr,
+                         'volume': vr,
+                         'dollar': dr,
+                         'calendar': df_ret}
+    bars_dicts[date]['tick'] = tick_bar_df
+    bars_dicts[date]['volume'] = volume_bar_df
+    bars_dicts[date]['calendar'] = calendar_bar_df
+    bars_dicts[date]['dollar'] = usd_volume_bar_df
+    print(bar_returns)
+    symbolFolderToStore = os.path.join(informationClockFolder, symbol)
+
+    #  store all values
+    pickle_out_filename = os.path.join(symbolFolderToStore, str(date) + '.pkl')
+    pickle_out_filename_returns = os.path.join(symbolFolderToStore, 'Returns_' + str(date) + '.pkl')
+
+    pickle.dump(bars_dicts, open(pickle_out_filename, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump(bar_returns, open(pickle_out_filename_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+    print('just saved: ', pickle_out_filename)
+
+    # return bar_returns, bars_dicts
+
+
 if __name__ == '__main__':
+
     symbolIdx = 9
 
     symbol = sorted(symbols)[symbolIdx]
     print(symbol)
 
     symbolFolderToStore = os.path.join(informationClockFolder, symbol)
+    print(symbolFolderToStore)
     number_of_workers = 5
 
     quotesFileCh = os.path.join(dataFolder, quotes[symbolIdx])
@@ -122,5 +125,8 @@ if __name__ == '__main__':
     input_dict = testClass.load_and_format_data()
 
     # with Pool(number_of_workers) as p:
-    with Pool(number_of_workers) as p:
-        print(p.map(produce_info_clock_files, intersectionDates))
+    try:
+        with Pool(number_of_workers) as p:
+            print(p.map(produce_info_clock_files, intersectionDates))
+    except KeyError:
+        pass
