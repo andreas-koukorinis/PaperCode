@@ -95,7 +95,7 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 
 if __name__ == '__main__':
 
-    symbol_idx = 15 # pick a symbol in the list
+    symbol_idx = 28 # pick a symbol in the list
 
     label_idx = 5 # pick a label #do 6 after
     symbol = sorted(symbols)[symbol_idx]
@@ -196,7 +196,7 @@ if __name__ == '__main__':
                                                 pass
                                          else:
                                                 print('...and can do damage!')
-                                                chunk_size = int(Xte.shape[0] / 7)
+                                                chunk_size = int(Xte.shape[0] / 9)
                                                 for start in range(0, Xte.shape[0], chunk_size):
                                                     X_te_subset = Xte.iloc[start:start+chunk_size]
                                                     Y_te_subset = Yte.iloc[start:start+chunk_size]
@@ -242,11 +242,11 @@ if __name__ == '__main__':
                                                         pickle_out = open(pickle_out_filename, 'wb')
                                                         pickle.dump(oos_mkl_results, pickle_out)
                                                         pickle_out.close()
-                                                    except (ValueError, TypeError,PermissionError, EOFError, IndexError, FileNotFoundError, OSError):
+                                                    except (ValueError, TypeError,PermissionError, EOFError, IndexError, FileNotFoundError, OSError, RuntimeError):
                                                         continue
 
 
-                            except (OSError, ValueError, TypeError, EOFError, IndexError,PermissionError, FileNotFoundError):
+                            except (OSError, ValueError, TypeError, EOFError, IndexError,PermissionError, FileNotFoundError, RuntimeError):
 
                                 continue
 
