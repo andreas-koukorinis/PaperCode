@@ -85,17 +85,17 @@ def produce_info_clock_files(date):
 
 if __name__ == '__main__':
 
-    symbolIdx = 9
+    symbolIdx = 15
 
-    symbol = sorted(symbols)[symbolIdx]
+    symbol = str('VXX')
     print(symbol)
 
     symbolFolderToStore = os.path.join(informationClockFolder, symbol)
     print(symbolFolderToStore)
     number_of_workers = 5
 
-    quotesFileCh = os.path.join(dataFolder, quotes[symbolIdx])
-    tradesFileCh = os.path.join(dataFolder, trades[symbolIdx])
+    quotesFileCh = os.path.join(dataFolder, str('VXX_US_Equity_quotes'))
+    tradesFileCh = os.path.join(dataFolder, str('VXX_US_Equity_trades'))
 
     # get common Dates
     quotesDates = sorted([f.split(".csv")[0] for f in os.listdir(quotesFileCh)])
