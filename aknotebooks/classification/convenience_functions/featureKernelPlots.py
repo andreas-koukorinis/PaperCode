@@ -116,24 +116,24 @@ if __name__ == '__main__':
 
     # pick a symbol
 
-    symbolIdx = 30
+    symbolIdx = 18
     symbolSpecificFeaturesDirectors = os.path.join(symbolFeaturesDirectories, symbols[symbolIdx])
     print('you chose symbol:', symbols[symbolIdx])
     symbolFeaturesLocation = "/".join((symbolSpecificFeaturesDirectors, 'MODEL_BASED'))  # where all the HMM output is
     print('your features are here-in pickle format:',symbolFeaturesLocation)
     # and a label Idx
-    labelsIdx = 'Five'
+    labelsIdx = 'Four'
     print('you are picking Label', labelsIdx)
     LabelsFilesPath = os.path.join(labelsLocations['Two'], symbols[symbolIdx])
     LabelsFiles = os.listdir(LabelsFilesPath)
 
     dates = os.listdir(symbolFeaturesLocation)
-    dateIdx = 15
+
     for dateIdx in [5, 10, 15]:
         dateSpecificDirectory = os.path.join(symbolFeaturesLocation, dates[dateIdx])
         dateSpecificFiles = sorted(os.listdir(dateSpecificDirectory))
 
-        for idx in range (0, 26):
+        for idx in range (0, 14):
 
             specificFile = os.path.join(dateSpecificDirectory, dateSpecificFiles[idx])
 
