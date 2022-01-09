@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     h_dict = defaultdict(dict)
 
-    symbolIdx = 9 # symbol 3 has problems
+    symbolIdx = 2 # symbol 3 has problems
 
     symbol = sorted(symbols)[symbolIdx]
     print(symbol)
