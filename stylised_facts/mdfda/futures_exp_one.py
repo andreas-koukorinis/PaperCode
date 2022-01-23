@@ -7,4 +7,4 @@ dataFolder = lobFut.dataFolder
 
 
 if __name__ == '__main__':
-   pass
+   print(dataFolder)
