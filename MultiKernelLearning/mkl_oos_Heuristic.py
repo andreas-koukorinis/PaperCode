@@ -104,12 +104,12 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 if __name__ == '__main__':
 
 
-    symbol_idx =16
-    # 25: RBS 10:CPG 16:LAND
+    symbol_idx =41
+    # 25: RBS 10:CPG 16:LAND #9:CNA
 
-    # label_idx = 4
-    for label_idx in [6]:
-
+    # CCL -symbol 7 -missing: 2, 5, 6
+    #
+    for label_idx in [3]:
 
         # pick a label #do 6 after
         symbol = sorted(symbols)[symbol_idx]
@@ -137,146 +137,150 @@ if __name__ == '__main__':
                 print(keys == fit_select.forward_Dates(hmm_dates, hmm_date) )
                 for key in keys: #<- parallelisation here!
 
-                    labels_file_path = os.path.join(symbolData.symbol_specific_label_path(label_idx), key + ".csv")
-                    print(os.path.isfile(labels_file_path))
+                    try:
 
-                    if os.path.isfile(labels_file_path):  # check that this is a real path
+                        labels_file_path = os.path.join(symbolData.symbol_specific_label_path(label_idx), key + ".csv")
+                        print(os.path.isfile(labels_file_path))
 
-                        print(" reading labels")  # this is the labels path!
-                        labels = pd.read_csv(labels_file_path)
-                        label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
-                        fit_select.logmemoryusage("Before garbage collect")
-                        hmm_features = nfu.hmm_features_df(open_pickle_filepath(symbol_feature_paths[key]))
+                        if os.path.isfile(labels_file_path):  # check that this is a real path
 
-                        if hmm_features.isnull().values.all():  # checking that the HMM features are actually not null
+                            print(" reading labels")  # this is the labels path!
+                            labels = pd.read_csv(labels_file_path)
+                            label_name = str(labels.columns[labels.columns.str.contains(pat='label')].values[0])
+                            fit_select.logmemoryusage("Before garbage collect")
+                            hmm_features = nfu.hmm_features_df(open_pickle_filepath(symbol_feature_paths[key]))
 
-                            pass
+                            if hmm_features.isnull().values.all():  # checking that the HMM features are actually not null
 
-                        else:
+                                pass
 
-                            print('can fit and predict!')
-                            Xtr, Ytr = features_and_labels(labels)
-                            if Xtr.shape[0]<10:
-                                print('ratio is too low')
-                                continue
                             else:
-                                forward_dates_list =fit_select.forward_Dates(keys, key)
-                                print('the number of forward dates is:',len(forward_dates_list))
 
-                                print('starting model fit')
+                                print('can fit and predict!')
+                                Xtr, Ytr = features_and_labels(labels)
+                                if Xtr.shape[0]<10:
+                                    print('ratio is too low')
+                                    continue
+                                else:
+                                    forward_dates_list =fit_select.forward_Dates(keys, key)
+                                    print('the number of forward dates is:',len(forward_dates_list))
 
-
-                                X_tr = fit_select.normalization(fit_select.rescale_01(np.array(Xtr)))
-                                Y_tr = fit_select.torch.Tensor(Ytr.values.ravel())
-
-                                base_learner = fit_select.SVC(C=C_choice)
-                                try:
-
-                                    KLtr = [fit_select.pairwise.homogeneous_polynomial_kernel(X_tr, degree=d) for d in range(1, 11)] + [fit_select.identity_kernel(len(Y_tr))]
-                                    # clf = fit_select.EasyMKL(lam=lam, multiclass_strategy='ova', learner=base_learner).fit(KLtr, Y_tr)
-                                    #
-                                    mklFHeuristic = FHeuristic().fit(KLtr, Y_tr)
-                                    # mklCKA = CKA().fit(KLtr, Y_tr)
-
-                                    y_pred = mklFHeuristic.predict(KLtr) #predictions
-                                    y_score = mklFHeuristic.decision_function(KLtr) #rank
-                                    accuracy = accuracy_score(Y_tr, y_pred)
-                                    print ('Accuracy score: %.3f' % (accuracy))
-
-                                    # replace the mklFheuristic w your method of choice
+                                    print('starting model fit')
 
 
-                                    print(' and the score', y_score)
-                                    print('work on forward dates now')
-                                    print('##############')
-                                    oos_mkl_results = defaultdict(dict)
-                                    # force memory clean of pieces of torch
-                                    del Xtr
-                                    del KLtr
+                                    X_tr = fit_select.normalization(fit_select.rescale_01(np.array(Xtr)))
+                                    Y_tr = fit_select.torch.Tensor(Ytr.values.ravel())
 
-                                    fit_select.gc.collect()
+                                    base_learner = fit_select.SVC(C=C_choice)
+                                    try:
 
+                                        KLtr = [fit_select.pairwise.homogeneous_polynomial_kernel(X_tr, degree=d) for d in range(1, 11)] + [fit_select.identity_kernel(len(Y_tr))]
+                                        # clf = fit_select.EasyMKL(lam=lam, multiclass_strategy='ova', learner=base_learner).fit(KLtr, Y_tr)
+                                        #
+                                        mklFHeuristic = FHeuristic().fit(KLtr, Y_tr)
+                                        # mklCKA = CKA().fit(KLtr, Y_tr)
 
-                                    for forward_date in forward_dates_list:
-                                        forward_labels_file_path = os.path.join(symbolData.symbol_specific_label_path(label_idx), forward_date + ".csv")
-                                        print(os.path.isfile(forward_labels_file_path))
+                                        y_pred = mklFHeuristic.predict(KLtr) #predictions
+                                        y_score = mklFHeuristic.decision_function(KLtr) #rank
+                                        accuracy = accuracy_score(Y_tr, y_pred)
+                                        print ('Accuracy score: %.3f' % (accuracy))
 
-                                        if os.path.isfile(forward_labels_file_path):  # check that this is a real path
-                                            print("reading forward labels")  # this is the labels path!
-
-                                            forward_labels = pd.read_csv(forward_labels_file_path)
-
-                                            forward_label_name = str(forward_labels.columns[forward_labels.columns.str.contains(pat='label')].values[0]) #extracting the forward label name
-                                            fit_select.logmemoryusage("Before garbage collect")
-
-                                            forward_hmm_features = nfu.hmm_features_df(open_pickle_filepath(symbol_feature_paths[forward_date])) # estimating the features
-                                            Xte, Yte = forward_date_features_labels(forward_df = forward_labels , forward_hmm_features = forward_hmm_features)
-
-                                            if Xte.shape[0]<10:
-                                                print('..but the ratio is too low')
-                                                print(Xte)
-                                                pass
-                                            else:
-                                                print('...and can do damage!')
-                                                chunk_size = int(Xte.shape[0] / 9)
-                                                for start in range(0, Xte.shape[0], chunk_size):
-                                                    X_te_subset = Xte.iloc[start:start+chunk_size]
-                                                    Y_te_subset = Yte.iloc[start:start+chunk_size]
-
-                                                    X_te = fit_select.normalization(fit_select.rescale_01(np.array(X_te_subset)))
-                                                    Y_te = fit_select.torch.tensor(Y_te_subset.values.ravel())
-
-                                                    del X_te_subset
-                                                    del Y_te_subset
+                                        # replace the mklFheuristic w your method of choice
 
 
+                                        print(' and the score', y_score)
+                                        print('work on forward dates now')
+                                        print('##############')
+                                        oos_mkl_results = defaultdict(dict)
+                                        # force memory clean of pieces of torch
+                                        del Xtr
+                                        del KLtr
 
-                                                    fit_select.gc.collect()
+                                        fit_select.gc.collect()
 
-                                                    # use the
-                                                    # underscore if it has been passed to torch and normalised
-                                                    try:
-                                                        chunk_list = dict()
 
-                                                        # construct the KL for the case of the testing and training sets
-                                                        KLte = [fit_select.pairwise.homogeneous_polynomial_kernel(X_te,X_tr, degree=d) for d in range(1,11)]
-                                                        KLte.append(fit_select.torch.zeros(KLte[0].size()))
+                                        for forward_date in forward_dates_list:
+                                            forward_labels_file_path = os.path.join(symbolData.symbol_specific_label_path(label_idx), forward_date + ".csv")
+                                            print(os.path.isfile(forward_labels_file_path))
 
-                                                        # do the prediction using the fitted learner
-                                                        Y_pred =mklFHeuristic.predict(KLte)
-                                                        del KLte
+                                            if os.path.isfile(forward_labels_file_path):  # check that this is a real path
+                                                print("reading forward labels")  # this is the labels path!
+
+                                                forward_labels = pd.read_csv(forward_labels_file_path)
+
+                                                forward_label_name = str(forward_labels.columns[forward_labels.columns.str.contains(pat='label')].values[0]) #extracting the forward label name
+                                                fit_select.logmemoryusage("Before garbage collect")
+
+                                                forward_hmm_features = nfu.hmm_features_df(open_pickle_filepath(symbol_feature_paths[forward_date])) # estimating the features
+                                                Xte, Yte = forward_date_features_labels(forward_df = forward_labels , forward_hmm_features = forward_hmm_features)
+
+                                                if Xte.shape[0]<10:
+                                                    print('..but the ratio is too low')
+                                                    print(Xte)
+                                                    pass
+                                                else:
+                                                    print('...and can do damage!')
+                                                    chunk_size = int(Xte.shape[0] / 9)
+                                                    for start in range(0, Xte.shape[0], chunk_size):
+                                                        X_te_subset = Xte.iloc[start:start+chunk_size]
+                                                        Y_te_subset = Yte.iloc[start:start+chunk_size]
+
+                                                        X_te = fit_select.normalization(fit_select.rescale_01(np.array(X_te_subset)))
+                                                        Y_te = fit_select.torch.tensor(Y_te_subset.values.ravel())
+
+                                                        del X_te_subset
+                                                        del Y_te_subset
+
+
+
                                                         fit_select.gc.collect()
 
+                                                        # use the
+                                                        # underscore if it has been passed to torch and normalised
+                                                        try:
+                                                            chunk_list = dict()
 
-                                                        accuracy = fit_select.accuracy_score(Y_te, Y_pred)
-                                                        print('for forward date: ',forward_date, ' the accuracy is :', accuracy)
-                                                        # now a dictionary that saves the evaluation of the prediction using
-                                                        # key and forward OOS Date
-                                                        chunk_list[start+chunk_size] = mkldp.evaluate_predictions(Y_te, Y_pred)
-                                                        print('done chunk: ', start+chunk_size)
-                                                        oos_mkl_results[key][forward_date, (start+chunk_size)] = chunk_list
-                                                        oos_hash_file = "".join((str(symbol),'_',
-                                                                                 'HeuristicMKL_poly_kernel','_Label_idx:_'+str(label_idx)+'_',str(key),'_',
-                                                                                 'OOS_Date_',str(forward_date),'.pkl' ))
+                                                            # construct the KL for the case of the testing and training sets
+                                                            KLte = [fit_select.pairwise.homogeneous_polynomial_kernel(X_te,X_tr, degree=d) for d in range(1,11)]
+                                                            KLte.append(fit_select.torch.zeros(KLte[0].size()))
 
-
-
-                                                        pickle_out_filename = os.path.join(mklOOSPredictionPathSpecific,str(symbol), oos_hash_file)
-                                                        print('about to save to... ', pickle_out_filename)
-                                                        pickle_out = open(pickle_out_filename, 'wb')
-                                                        pickle.dump(oos_mkl_results, pickle_out)
-                                                        pickle_out.close()
-                                                    except (ValueError, FileNotFoundError, TypeError,PermissionError, EOFError, IndexError, FileNotFoundError, OSError, RuntimeError):
-                                                        continue
+                                                            # do the prediction using the fitted learner
+                                                            Y_pred =mklFHeuristic.predict(KLte)
+                                                            del KLte
+                                                            fit_select.gc.collect()
 
 
-                                except (OSError, ValueError, TypeError, EOFError,FileNotFoundError, IndexError,PermissionError, FileNotFoundError, RuntimeError):
+                                                            accuracy = fit_select.accuracy_score(Y_te, Y_pred)
+                                                            print('for forward date: ',forward_date, ' the accuracy is :', accuracy)
+                                                            # now a dictionary that saves the evaluation of the prediction using
+                                                            # key and forward OOS Date
+                                                            chunk_list[start+chunk_size] = mkldp.evaluate_predictions(Y_te, Y_pred)
+                                                            print('done chunk: ', start+chunk_size)
+                                                            oos_mkl_results[key][forward_date, (start+chunk_size)] = chunk_list
+                                                            oos_hash_file = "".join((str(symbol),'_',
+                                                                                     'HeuristicMKL_poly_kernel','_Label_idx:_'+str(label_idx)+'_',str(key),'_',
+                                                                                     'OOS_Date_',str(forward_date),'.pkl' ))
 
-                                    continue
 
-                    else:
-                        print('bad input for forward labels')
-                        pass
+
+                                                            pickle_out_filename = os.path.join(mklOOSPredictionPathSpecific,str(symbol), oos_hash_file)
+                                                            print('about to save to... ', pickle_out_filename)
+                                                            pickle_out = open(pickle_out_filename, 'wb')
+                                                            pickle.dump(oos_mkl_results, pickle_out)
+                                                            pickle_out.close()
+                                                        except (ValueError, FileNotFoundError, TypeError,PermissionError, EOFError, IndexError, FileNotFoundError, OSError, RuntimeError):
+                                                            continue
+
+
+                                    except (OSError, ValueError, TypeError, EOFError,FileNotFoundError, IndexError,PermissionError, FileNotFoundError, RuntimeError):
+
+                                        continue
+
+                    except (OSError, ValueError, TypeError, EOFError,FileNotFoundError, IndexError,PermissionError, FileNotFoundError, RuntimeError):
+                        continue
+            else:
+                print('bad input for forward labels')
+                pass
 
 
 
