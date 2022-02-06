@@ -104,13 +104,13 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 if __name__ == '__main__':
 
 
-    symbol_idx =10
-    # 25: RBS 10:CPG 16:LAND #9:CNA
+    symbol_idx =25
+    # 25: RBS 10:CPG 16:LAND #9:CNA #17-LGEN.L
 
 
     # CCL -symbol 7 -missing: 2, 5, 6
     #
-    for label_idx in [3]:
+    for label_idx in [4]:
         # pick a label #do 6 after
         symbol = sorted(symbols)[symbol_idx]
         C_choice = 0.1
