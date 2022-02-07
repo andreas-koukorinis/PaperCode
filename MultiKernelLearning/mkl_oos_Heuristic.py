@@ -104,13 +104,13 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 if __name__ == '__main__':
 
 
-    symbol_idx =41
-    # 25: RBS 10:CPG 16:LAND #9:CNA
+    symbol_idx =25
+    # 25: RBS 10:CPG 16:LAND #9:CNA #17-LGEN.L
+
 
     # CCL -symbol 7 -missing: 2, 5, 6
     #
-    for label_idx in [3]:
-
+    for label_idx in [4]:
         # pick a label #do 6 after
         symbol = sorted(symbols)[symbol_idx]
         C_choice = 0.1
@@ -220,7 +220,7 @@ if __name__ == '__main__':
                                                     pass
                                                 else:
                                                     print('...and can do damage!')
-                                                    chunk_size = int(Xte.shape[0] / 9)
+                                                    chunk_size = int(Xte.shape[0] / 14)
                                                     for start in range(0, Xte.shape[0], chunk_size):
                                                         X_te_subset = Xte.iloc[start:start+chunk_size]
                                                         Y_te_subset = Yte.iloc[start:start+chunk_size]

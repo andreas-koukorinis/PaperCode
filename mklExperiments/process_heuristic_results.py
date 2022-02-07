@@ -39,22 +39,24 @@ if __name__ == '__main__':
 
     chunks_dict= {}
     list_of_dfs = list()
-    for symbolIDX in [10, 14, 15, 16, 28, 36]:
-        print('processing symbol:', symbolIDX, symbols[symbolIDX])
+    for symbolIDX in [17]: #do 6: BLT
+        print('processing symbol:', symbolIDX, sorted(symbols)[symbolIDX])
 
         files_location = os.path.join(heuristic_path, sorted(symbols)[symbolIDX])
         print(files_location)
+        print('total files for this symbol: ', len(files_location))
         print(os.path.isdir((files_location)))
-        for label_idx in [5]:
+        for label_idx in [6]:
             print('and now doing label: ', label_idx)
             try:
 
                 symbol_label_files = [f for f in os.listdir(files_location) if str('_Label_idx:_'+str(label_idx)+'_') in f]
-                print('total files for the symbol:', len(symbol_label_files)) # total how many you have and how many for a specific label
+                print('total files for the symbol/label:', len(symbol_label_files)) # total how many you have and how many for a specific label
 
                 number_of_files = len(symbol_label_files)
                 print('and for this label', number_of_files)
                 for file_idx in range(0, number_of_files):
+                    print(file_idx)
                     file_to_load_path = os.path.join(files_location, symbol_label_files[file_idx])
                     if (os.path.isfile(file_to_load_path)):
                         try:
@@ -70,7 +72,7 @@ if __name__ == '__main__':
                                     list_of_dfs.append(pd.DataFrame(file_dict[file_keys[0]][key_item]))
 
                                 concat_df = pd.concat(list_of_dfs, axis =1).median(axis =1 )
-                                title = sorted(symbols)[symbolIDX] +"_Label_"+str(label_idx)+'_median_dfs_heuristic.csv'
+                                title = sorted(symbols)[symbolIDX] +"_Label_"+str(label_idx)+'_'+str(file_idx)+'_median_dfs_heuristic.csv'
                                 location_to_save=os.path.join(processed_location, sorted(symbols)[symbolIDX], 'Heuristic', title)
                                 concat_df.to_csv(location_to_save, index = True)
                                 print('and now saved :', location_to_save)

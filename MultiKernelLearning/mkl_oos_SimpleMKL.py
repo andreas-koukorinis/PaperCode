@@ -95,9 +95,9 @@ def forward_date_features_labels(forward_df, forward_hmm_features):
 
 if __name__ == '__main__':
 
-    symbol_idx = 28# pick Nov28 DownNa symbol in the list
+    symbol_idx = 4# pick Nov28 DownNa symbol in the list
 
-    label_idx = 3
+    label_idx = 4
     # pick a label #do 6 after
     symbol = sorted(symbols)[symbol_idx]
     C_choice = 0.1
