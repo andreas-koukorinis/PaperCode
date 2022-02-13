@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     chunks_dict= {}
     list_of_dfs = list()
-    for symbolIDX in [17]: #do 6: BLT
+    for symbolIDX in [28]: #do 6: BLT
         print('processing symbol:', symbolIDX, sorted(symbols)[symbolIDX])
 
         files_location = os.path.join(heuristic_path, sorted(symbols)[symbolIDX])
