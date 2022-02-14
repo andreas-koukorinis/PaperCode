@@ -39,14 +39,14 @@ if __name__ == '__main__':
 
     chunks_dict= {}
     list_of_dfs = list()
-    for symbolIDX in [28]: #do 6: BLT
+    for symbolIDX in [7]: #do 6: BLT
         print('processing symbol:', symbolIDX, sorted(symbols)[symbolIDX])
 
         files_location = os.path.join(heuristic_path, sorted(symbols)[symbolIDX])
         print(files_location)
         print('total files for this symbol: ', len(files_location))
         print(os.path.isdir((files_location)))
-        for label_idx in [6]:
+        for label_idx in [3]:
             print('and now doing label: ', label_idx)
             try:
 
