@@ -26,6 +26,18 @@ from sklearn.preprocessing import Normalizer
 standard_scaler = StandardScaler()
 import pickle as pkl
 from sklearn.pipeline import make_pipeline
+import time
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import axes3d
+
+sns.set_style('darkgrid')
+sns.set_palette('muted')
+sns.set_context("notebook", font_scale=1.5,
+                rc={"lines.linewidth": 2.5})
+
+RS = 123
 
 from sklearn.preprocessing import LabelEncoder
 # Feature Analysis Imports
@@ -66,17 +78,71 @@ def open_pickle_file(path, pickle_file):
     pickle_to_file = pkl.load(open(file_loc, "rb"), encoding='iso-8859-1')
     return pickle_to_file
 
+# Utility function to visualize the outputs of PCA and t-SNE
+
+def fashion_scatter(x, colors, locationFileName):
+    # choose a color palette with seaborn.
+    num_classes = len(np.unique(colors))
+    palette = np.array(sns.color_palette("hls", num_classes))
+
+    # create a scatter plot.
+    plt.rcParams["figure.autolayout"] = True
+    fig, (ax1, ax2) = plt.subplots(2,1, figsize=(8, 8))
+    lim = (x.min()-5, x.max()+5)
+    ax1.spines["top"].set_visible(True)
+    ax1.spines["right"].set_visible(True)
+    ax1.spines["left"].set_visible(True)
+    ax1.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+    ax2.spines["top"].set_visible(True)
+    ax2.spines["right"].set_visible(True)
+    ax2.spines["left"].set_visible(True)
+    ax2.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+    ax1.scatter(x[:,0], x[:,1], lw=0, s=40, c=palette[colors.astype(np.int)], alpha =0.2)
+    ax2.scatter(x[:,0], x[:,2], lw=0, s=40, c=palette[colors.astype(np.int)], alpha =0.2)
+
+    ax1.set_xlim(lim)
+    ax1.set_ylim(lim)
+    ax2.set_xlim(lim)
+    ax2.set_ylim(lim)
+
+    ax1.xaxis.set_tick_params(labelsize=10)
+    ax1.yaxis.set_tick_params(labelsize=10)
+    ax2.xaxis.set_tick_params(labelsize=10)
+    ax2.yaxis.set_tick_params(labelsize=10)
+    ax2.set_xlabel('t-SNE 1', fontsize = 13)
+    ax1.set_ylabel('t-SNE 2', fontsize = 13)
+    ax2.set_ylabel('t-SNE 3', fontsize = 13)
+
+    plt.xlim(-25, 25)
+    plt.ylim(-25, 25)
+
+    ax1.axis('tight')
+    ax2.axis('tight')
+    ax1.get_shared_x_axes().join(ax1, ax2)
+    ax1.set_xticklabels([])
+    ax2.autoscale() ## call autoscale if needed
+    plt.tight_layout()
+    plt.grid(True)
+    plt.savefig(locationFileName)
+
+    plt.show()
+
+
+
+    return fig, ax1, ax2
+
 
 if __name__ == '__main__':
 
-    symbolIdx = 10
-
+    symbolIdx = 1
 
     symbolSpecificFeaturesDirectors = os.path.join(symbolFeaturesDirectories, sorted(symbols)[symbolIdx])
     print('you chose symbol:', sorted(symbols)[symbolIdx])
     symbolFeaturesLocation = "/".join((symbolSpecificFeaturesDirectors, 'MODEL_BASED'))  # where all the HMM output is
     print('your features are here-in pickle format:',symbolFeaturesLocation)
     # and a label Idx
+
+    time_start = time.time()
 
 
     for labelsIdx in ['One', 'Two', 'Three', 'Four']:
@@ -86,7 +152,8 @@ if __name__ == '__main__':
 
         dates = os.listdir(symbolFeaturesLocation)
 
-        for dateIdx in [5, 7, 10, 14]:
+        for dateIdx in [7]:
+
             idx =4
             dateSpecificDirectory = os.path.join(symbolFeaturesLocation, dates[dateIdx])
             dateSpecificFiles = sorted(os.listdir(dateSpecificDirectory))
@@ -117,7 +184,6 @@ if __name__ == '__main__':
             # Convert unique classes (strings) into integers
 
             X_array = np.asarray(X)
-            print(X_array)
 
             X_array = np.asarray(X)
             is_all_zero = np.all(X_array == 0)
@@ -125,9 +191,6 @@ if __name__ == '__main__':
                 print('array is all zeros')
             else:
                 print('Array is good')
-                print(X_array)
-
-
                 choice_length= np.count_nonzero(~np.isnan(labels))
 
                 X, y = shuffle(X_array, labels)
@@ -136,85 +199,55 @@ if __name__ == '__main__':
 
                 scaler = MinMaxScaler(feature_range=(-1, 1))
                 mm = make_pipeline(MinMaxScaler(), Normalizer())
-                X_train = mm.fit_transform(X)
+                X = mm.fit_transform(X)
                 rbf_feature = RBFSampler(gamma=1.5, random_state=10)
                 ps = PolynomialCountSketch(degree=11, random_state=1)
-                X_rbf_features = rbf_feature.fit_transform(X_train)
-                X_poly_features = ps.fit_transform(X_train)
+                X_rbf_features = rbf_feature.fit_transform(X)
+                X_poly_features = ps.fit_transform(X)
                 # We want to get TSNE embedding with 2 dimensions
-                n_components = 2
+                n_components = 3
                 tsne = TSNE(n_components)
                 tsne_result = tsne.fit_transform(X_rbf_features)
-                tsne_result.shape
-
-                tsne_result_df = pd.DataFrame({'tsne_1': tsne_result[:,0], 'tsne_2': tsne_result[:,1], 'label': y})
-
-                fig, ax = plt.subplots(1,facecolor='White')
-
-                x=tsne_result_df['tsne_1']
-                y=tsne_result_df['tsne_2']
-                plt.rcParams["figure.autolayout"] = True
-                lim = (tsne_result.min()-5, tsne_result.max()+5)
-                ax.set_xlim(lim)
-                ax.set_ylim(lim)
-                ax.spines["top"].set_visible(True)
-                ax.spines["right"].set_visible(True)
-                ax.spines["left"].set_visible(True)
-                ax.set_aspect('equal')
-                ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
-                plt.scatter(x, y,  alpha=0.2, s=50, cmap=plt.cm.rainbow)
-                plt.xlabel('T-SNE 1', fontsize = 13)
-                plt.ylabel('T-SNE 2', fontsize = 13)
-                plt.axis("tight")
-                plt.xticks(fontsize=12)
-                plt.yticks(fontsize=12)
-                plt.grid(True)
                 locationFileName = os.path.join(figuresDestination,str(sorted(symbols)[symbolIdx])+'_idx_'+
                                                 str(idx)+
-                                                'date_'+str(dateIdx)+'_label'+str(labelName)+'_tsne_rbf_kernelised.png')
-                plt.savefig(locationFileName)
-                plt.tight_layout()
+                                                'date_'+str(dateIdx)+'_'+str(labelName)+'_tsne_rbf_kernelised.png')
+
+                fashion_scatter(tsne_result, y, locationFileName)
+
+
+                fig = plt.figure(figsize=(16,9))
+                ax =plt.axes(projection = '3d')
+                # ax = Axes3D(fig)
+                df =pd.DataFrame(tsne_result)
+                x =df[0]
+                y = df[1]
+                z = df[2]
+
+                df = pd.DataFrame({'x': x, 'y': y, 'z': z}, index=range(len(x)))
+                trisurf = ax.plot_trisurf(df.x, df.y, df.z, cmap=cm.jet, linewidth=0.3, antialiased = True, edgecolor = 'grey')
+                ax.zaxis.set_tick_params(labelsize=10)
+                ax.xaxis.set_tick_params(labelsize=10)
+                ax.yaxis.set_tick_params(labelsize=10)
+                # Adding labels
+                ax.set_xlabel('t-sne 1', fontsize=13, rotation = 90)
+                ax.set_ylabel('t-sne 2', fontsize=13, rotation = -90)
+                ax.set_zlabel('t-sne 3', fontsize=13, rotation = -90)
+
+                ax.view_init(-140, 100)
+                df = pd.DataFrame({'x': x, 'y': y, 'z': z}, index=range(len(x)))
+                trisurf = ax.plot_trisurf(df.x, df.y, df.z, cmap=cm.jet, linewidth=0.3, antialiased = True, edgecolor = 'grey')
+                ax.zaxis.set_tick_params(labelsize=10)
+                ax.xaxis.set_tick_params(labelsize=10)
+                ax.yaxis.set_tick_params(labelsize=10)
+                # Adding labels
+                ax.set_xlabel('t-sne 1', fontsize=13, rotation = 90)
+                ax.set_ylabel('t-sne 2', fontsize=13, rotation = -90)
+                ax.set_zlabel('t-sne 3', fontsize=13, rotation = -90)
+
+                ax.view_init(-140, 100)
+                locationFileName_3D = os.path.join(figuresDestination,str(sorted(symbols)[symbolIdx])+'_idx_'+
+                                                   str(idx)+
+                                                   'date_'+str(dateIdx)+'_'+str(labelName)+'_tsne_rbf_kernelised_3D.png')
+                plt.savefig(locationFileName_3D)
+
                 plt.show()
-
-                ## poly kernels
-
-                # We want to get TSNE embedding with 2 dimensions
-                n_components = 2
-                tsne = TSNE(n_components)
-                tsne_result = tsne.fit_transform(X_poly_features)
-                tsne_result.shape
-                # Plot the result of our TSNE with the label color coded
-                # A lot of the stuff here is about making the plot look pretty and not TSNE
-
-                tsne_result_df = pd.DataFrame({'tsne_1': tsne_result[:,0], 'tsne_2': tsne_result[:,1], 'label': y})
-
-                fig, ax = plt.subplots(1,facecolor='White')
-
-                x=tsne_result_df['tsne_1']
-                y=tsne_result_df['tsne_2']
-                plt.rcParams["figure.autolayout"] = True
-                lim = (tsne_result.min()-5, tsne_result.max()+5)
-                ax.set_xlim(lim)
-                ax.set_ylim(lim)
-                ax.spines["top"].set_visible(True)
-                ax.spines["right"].set_visible(True)
-                ax.spines["left"].set_visible(True)
-                ax.set_aspect('equal')
-                ax.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
-                plt.scatter(x, y,  alpha=0.3, s=50, cmap=plt.cm.rainbow)
-                plt.xlabel('T-SNE 1', fontsize = 13)
-                plt.ylabel('T-SNE 2', fontsize = 13)
-
-                plt.axis("tight")
-                plt.xticks(fontsize=12)
-                plt.yticks(fontsize=12)
-                plt.grid(True)
-                plt.grid(True)
-                plt.legend()
-
-                plt.grid(True)
-                locationFileName = os.path.join(figuresDestination,str(sorted(symbols)[symbolIdx])+'_idx_'+
-                                                str(idx)+
-                                                'date_'+str(dateIdx)+'_label'+str(labelName)+'_tsne_poly_kernelised.png')
-                plt.savefig(locationFileName)
-
