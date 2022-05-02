@@ -23,7 +23,7 @@ if __name__ == '__main__':
     symbol_target_location = os.path.join(targetLocation, symbol)  # here is the symbol location for the processed files
     symbol_csv = sorted([f for f in os.listdir(symbol_path) if str('.gz') not in f])  # these are the csvs
 
-    symbol_file_idx = 1  # this we will need to loop over or figure out the multi-processing
+    symbol_file_idx = 5  # this we will need to loop over or figure out the multi-processing
     file_loc = os.path.join(symbol_path, symbol_csv[symbol_file_idx])  # location of said file above
 
     ## the dask bit starts here
@@ -62,21 +62,21 @@ if __name__ == '__main__':
 
     unique_date_idx = 12
     unique_dates_inputs = list(range(len(symbol_unique_dates)))
-    for unique_date_idx in unique_dates_inputs:
+    # for unique_date_idx in unique_dates_inputs:
+    #
+    #     read_process_store(dask_df=dask_df, symbol_unique_dates= symbol_unique_dates,
+    #                        uniqueDateIdx = unique_date_idx)
+    #     #
+    #
+    def parallel_runs(data_list):
+        pool = multiprocessing.Pool(4)
+        prod_x = partial(read_process_store,dask_df=dask_df, symbol_unique_dates= symbol_unique_dates )
+        try:
+            results = pool.map(prod_x, data_list)
+            print(results)
+        except KeyError:
+            pass
 
-        read_process_store(dask_df=dask_df, symbol_unique_dates= symbol_unique_dates,
-                           uniqueDateIdx = unique_date_idx)
-        #
-    #
-    # def parallel_runs(data_list):
-    #     pool = multiprocessing.Pool(6)
-    #     prod_x = partial(read_process_store,dask_df=dask_df, symbol_unique_dates= symbol_unique_dates )
-    #     try:
-    #         results = pool.map(prod_x, data_list)
-    #         print(results)
-    #     except KeyError:
-    #         pass
-    #
-    #
-    # parallel_runs(unique_dates_inputs)
+
+    parallel_runs(unique_dates_inputs)
     #
