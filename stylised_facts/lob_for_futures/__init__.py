@@ -1,16 +1,17 @@
-import pandas as pd
-import numpy as np
+
 import pickle
 import os
-from sklearn.metrics.pairwise import rbf_kernel
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import time
-from sklearn.metrics import accuracy_score, roc_auc_score
+
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import seaborn as sb
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
 ###
 
 from tqdm import tqdm
@@ -326,6 +327,7 @@ class DataLoader:
         self.tick_bars = []
         self.usd_volume_bars = []
         self._logger = logger('DataLoader')
+        #         self._symbols = sorted(['VIX',  'FB1',  'TU1',  'G_1',  'RX1',  'OE1',  'TY1',  'FV1',  'JB1',  'RX1',  'DU1',  'KE1',  'US1',  'YM1', 'XM1',  'VXX'] )
         self._data_folder = data_location
 
         self._quotes_string = "".join((self._symbol, '_Comdty_quotes'))
@@ -358,8 +360,7 @@ class DataLoader:
                     on='TradeTime', allow_exact_matches=True)
 
                 quotes_df = quotes_df.rename(columns={'value_x': 'BestBid', 'value_y': 'BestAsk',
-                                                      'size_x': 'BidSize', 'size_y': 'AskSize',
-                                                      'time_x': 'QuoteTime'})
+                                                      'size_x': 'BidSize', 'size_y': 'AskSize', 'time_x': 'QuoteTime'})
 
                 tr_tmp_df = pd.read_csv(tradesDateFile, usecols=self._use_columns)
                 tr_tmp_df['TradeTime'] = pd.to_datetime(tr_tmp_df.time).values
@@ -376,8 +377,7 @@ class DataLoader:
                 LOB['TimeStamp'] = pd.to_datetime(LOB.TradeTime).dt.time
                 LOB['TradeVolume'] = LOB['TradeSize'].fillna(0)
                 LOB['total_traded_volume'] = LOB.TradeVolume
-                LOB['milliSeconds'] = [(((x.hour * 60 + x.minute) * 60 + x.second) * 1000) for x in
-                                       LOB['TimeStamp']]
+                LOB['milliSeconds'] = [(((x.hour * 60 + x.minute) * 60 + x.second) * 1000) for x in LOB['TimeStamp']]
                 LOB['dollar_traded_volume'] = pd.Series(LOB.TradePrice * LOB.TradeVolume).fillna(0)
                 LOB['timeStampIdx'] = pd.DatetimeIndex(LOB.time_y)
                 LOB['micro_price'] = (LOB.BestAsk * LOB.AskSize + LOB.BestBid * LOB.BidSize) / (
@@ -387,38 +387,7 @@ class DataLoader:
 
             except FileNotFoundError:
                 self._logger.info(f"Data for day {date} does not exist. Skipping this day")
-        return mergedFile
-
-    def apply_micro_structure_features(self, df):
-
-        self._logger.info("Applying micro-structure features")
-
-        df['weighted_average_bid_price'] = pd.DataFrame(df.filter(like='bid_price', axis=1).values).mul(
-            pd.DataFrame(df.filter(like='bid_size', axis=1).values)).sum(axis=1) / pd.DataFrame(
-            df.filter(like='bid_size', axis=1).values).sum(axis=1)
-
-        df['weighted_average_ask_price'] = pd.DataFrame(df.filter(like='ask_price', axis=1).values).mul(
-            pd.DataFrame(df.filter(like='ask_size', axis=1).values)).sum(
-            axis=1) / pd.DataFrame(df.filter(like='ask_size', axis=1).values).sum(axis=1)
-        df['weighted_activity_spread'] = df['weighted_average_ask_price'] - df['weighted_average_bid_price']
-        df['total_size'] = (pd.DataFrame(df.filter(like='ask_size', axis=1).values).sum(axis=1) +
-                            pd.DataFrame(df.filter(like='bid_size', axis=1).values).sum(axis=1))
-        df['micro_price'] = ((pd.DataFrame(df.filter(like='bid_price', axis=1).values).mul(
-            pd.DataFrame(df.filter(like='bid_size', axis=1).values)).sum(axis=1) +
-                              pd.DataFrame(df.filter(like='ask_price', axis=1).values).mul(
-                                  pd.DataFrame(df.filter(like='ask_size', axis=1).values)).sum(axis=1))) / df[
-                                'total_size']
-        df['price_imbalance'] = ((pd.DataFrame(df.filter(like='ask_price', axis=1).values).mul(
-            pd.DataFrame(df.filter(like='ask_size', axis=1).values)).sum(axis=1) -
-                                  pd.DataFrame(df.filter(like='bid_price', axis=1).values).mul(
-                                      pd.DataFrame(df.filter(like='bid_size', axis=1).values)).sum(axis=1))) / df[
-                                    'total_size']
-        df['pct_change_micro_price'] = df.micro_price_close.pct_change()
-        df['simple_mid_price'] = 0.5 * (pd.DataFrame(df.filter(like='ask_price', axis=1)).mean(axis=1) +
-                                        pd.DataFrame(df.filter(like='bid_price', axis=1)).mean(axis=1))
-
-        # TODO: do we want to be using pct_change here or log returns?
-        return df
+            return mergedFile
 
     @staticmethod
     def prep_bars(df, drop_col):
@@ -493,84 +462,112 @@ class DataLoader:
     def get_concat_data(input_dict):
         concat_dict = dict()
         for bar in input_dict.keys():
-            concat_dict[bar] = concat_dict[bar] = pd.concat([input_dict[bar][i]
-                                                             for i in range(len(input_dict[bar]))],
-                                                            ignore_index=False)
+            concat_dict[bar] = pd.concat([input_dict[bar][i]
+                                          for i in range(len(input_dict[bar]))], ignore_index=False)
         return concat_dict
 
 
-def quantile_plot(x, **kwargs):
-    quantiles, xr = stats.probplot(x, fit=True)
-    plt.scatter(xr, quantiles, **kwargs)
+def return_scaled(x):
+    scaler = StandardScaler()
+    x_scaled = scaler.fit_transform(np.array(x).reshape(-1, 1))
+    return np.asarray(x_scaled)
+
+
+####
+def symbol_file_name_path(experimentsDestination, symbol, file_idx):
+    symbolPath = os.path.join(experimentsDestination, str(symbol))
+    file_names = sorted(os.listdir(symbolPath))
+    file_name = file_names[file_idx]
+    file_path = os.path.join(symbolPath, file_name)
+    return file_names, file_path
+
+
+def n_F(dicts, bar):
+    df = pd.DataFrame.from_dict(dicts[str(bar)])
+    n = df.index.values
+    F = df.median(axis=1).values
+    return n, F
+
+
+def h_params(h_dict, bar):
+    h_df = pd.DataFrame.from_dict(h_dict[str(bar)]).T.median(axis=0)
+    H_intercept = h_df[1]
+    H = h_df[0]
+    return H_intercept, H
+
+
+def open_pickle_filepath(pickle_file):
+    # open pickle filepath
+    pickle_to_file = pickle.load(open(pickle_file, "rb"), encoding='latin1')
+
+    return pickle_to_file
 
 
 def returns(s):
+    # compute log returns
     arr = np.diff(np.log(s))
-    return (pd.Series(arr, index=s.index[1:]))
+    return pd.Series(arr, index=s.index[1:])
 
 
-import statsmodels.api as sm
+def df_derived_by_shift(df, lag=0, NON_DER=[]):
+    df = df.copy()
+    if not lag:
+        return df
+    cols = {}
+    for i in range(1, lag + 1):
+        for x in list(df.columns):
+            if x not in NON_DER:
+                if not x in cols:
+                    cols[x] = ['{}_{}'.format(x, i)]
+                else:
+                    cols[x].append('{}_{}'.format(x, i))
+    for k, v in cols.items():
+        columns = v
+        dfn = pd.DataFrame(data=None, columns=columns, index=df.index)
+        i = 1
+        for c in columns:
+            dfn[c] = df[k].shift(periods=i)
+            i += 1
+        df = pd.concat([df, dfn], axis=1)
+    return df
 
 
-def plot_autocorr(bar_types, bar_returns):
-    f, axes = plt.subplots(len(bar_types), figsize=(20, 14))
-
-    for i, (bar, typ) in enumerate(zip(bar_returns, bar_types)):
-        sm.graphics.tsa.plot_acf(bar, lags=120, ax=axes[i],
-                                 alpha=0.05, unbiased=True, fft=True,
-                                 zero=False,
-                                 title=f'{typ} AutoCorr')
-
-    file_name = 'multiclocks_autocorrel.png'
-    plt.savefig(os.path.join(figures_destination, file_name))
-    plt.legend()
-    plt.tight_layout()
+def get_test_stats(bar_types, bar_returns, test_func, *args, **kwds):
+    dct = {bar: (int(bar_ret.shape[0]), test_func(bar_ret, *args, **kwds))
+           for bar, bar_ret in zip(bar_types, bar_returns)}
+    df = (pd.DataFrame.from_dict(dct)
+          .rename(index={0: 'sample_size', 1: f'{test_func.__name__}_stat'})
+          .T)
+    return df
 
 
-if __name__ == '__main__':
+def apply_micro_structure_features(df):
+    print("Applying micro-structure features")
+    df = df.reset_index(level=0)
 
-    symbols = ['VIX', 'FB1', 'TU1', 'G_1', 'RX1', 'OE1', 'TY1', 'FV1',
-               'JB1', 'RX1', 'DU1', 'KE1', 'US1', 'YM1', 'XM1', 'VXX']
-    trades_cols = ['size', 'time', 'type', 'value']
-    quotes = [f for f in os.listdir(dataFolder) if str('_quotes') in f]
-    trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
+    df['weighted_average_BestBid'] = pd.DataFrame(df.filter(like='BestBid', axis=1).values).mul(
+        pd.DataFrame(df.filter(like='BidSize', axis=1).values)).sum(axis=1) / pd.DataFrame(
+        df.filter(like='BidSize', axis=1).values).sum(axis=1)
 
-    symbol = 'US1'
-    print(symbol)
-    quotes_string = "".join((symbol, "_Comdty_quotes"))
-    trades_string = "".join((symbol, "_Comdty_trades"))
-    quotesFileCh = os.path.join(dataFolder, quotes_string)
-    tradesFileCh = os.path.join(dataFolder, trades_string)
+    df['weighted_average_BestAsk'] = pd.DataFrame(df.filter(like='BestAsk', axis=1).values).mul(
+        pd.DataFrame(df.filter(like='AskSize', axis=1).values)).sum(
+        axis=1) / pd.DataFrame(df.filter(like='AskSize', axis=1).values).sum(axis=1)
+    df['weighted_activity_spread'] = df['weighted_average_BestAsk'] - df['weighted_average_BestBid']
+    df['total_size'] = (pd.DataFrame(df.filter(like='AskSize', axis=1).values).sum(axis=1) +
+                        pd.DataFrame(df.filter(like='BidSize', axis=1).values).sum(axis=1))
+    df['micro_price'] = ((pd.DataFrame(df.filter(like='BestBid', axis=1).values).mul(
+        pd.DataFrame(df.filter(like='BidSize', axis=1).values)).sum(axis=1) +
+                          pd.DataFrame(df.filter(like='BestAsk', axis=1).values).mul(
+                              pd.DataFrame(df.filter(like='AskSize', axis=1).values)).sum(axis=1))) / df[
+                            'total_size']
+    df['price_imbalance'] = ((pd.DataFrame(df.filter(like='BestAsk', axis=1).values).mul(
+        pd.DataFrame(df.filter(like='AskSize', axis=1).values)).sum(axis=1) -
+                              pd.DataFrame(df.filter(like='BestBid', axis=1).values).mul(
+                                  pd.DataFrame(df.filter(like='BidSize', axis=1).values)).sum(axis=1))) / df[
+                                'total_size']
+    df['pct_change_micro_price'] = df.micro_price_close.pct_change()
+    df['simple_mid_price'] = 0.5 * (pd.DataFrame(df.filter(like='BestAsk', axis=1)).mean(axis=1) +
+                                    pd.DataFrame(df.filter(like='BestBid', axis=1)).mean(axis=1))
 
-    quotesDates = sorted([f.split(".csv")[0] for f in os.listdir(quotesFileCh)])
-    tradesDates = sorted([f.split(".csv")[0] for f in os.listdir(tradesFileCh)])
-
-    print(quotesDates)
-    width = 400
-    time_resample_rate = "600S"
-
-    testClass = DataLoader(data_location=dataFolder,
-                           symbol=str(symbol),
-                           dates=quotesDates,
-                           use_columns=trades_cols,
-                           calendar_resample=str(time_resample_rate),
-                           trade_volume_width=width,
-                           ticks_width=width,
-                           usd_volume_width=width)
-
-    bars_dict = defaultdict(dict)
-    for date in quotesDates:
-        df = testClass.load_and_format_data()[str(date)]
-        input_dict = testClass.get_bars(df)
-        calendar_bar_df = (testClass.get_concat_data(testClass._bars_dict)['calendar_bars'])
-        tick_bar_df = testClass.get_concat_data(testClass._bars_dict)['tick_bars']
-        volume_bar_df = (testClass.get_concat_data(testClass._bars_dict)['volume_bars'])
-        USD_volume_bar_df = (testClass.get_concat_data(testClass._bars_dict)['usd_volume_bars'])
-        bars_dict['volume_bar'][date] = volume_bar_df
-        bars_dict['calendar_bar'][date] = calendar_bar_df
-        bars_dict['usd_volume_bar'][date] = USD_volume_bar_df
-        bars_dict['tick_bar'][date] = tick_bar_df
-        # storage location
-        dictFileName = "".join((symbol + '_' + str(date) + '_consolidated_lob_clock_tick_'+str(width)+'_cal_resample_'+str(time_resample_rate) + '.pkl'))
-        save_loc = os.path.join('/media/ak/Elements/OrderBookProcessedData/', symbol, dictFileName)
-        pickle.dump(bars_dict, open(save_loc, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    # TODO: do we want to be using pct_change here or log returns?
+    return df

@@ -1,3 +1,10 @@
+import time
+import multiprocessing as mp
+from multiprocessing import Pool
+from collections import defaultdict
+import sys
+
+sys.path.append('/home/ak/Documents/Research/PaperCode/stylised_facts')
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -6,8 +13,11 @@ import os
 import lob_for_futures as lobFut
 from lob_for_futures import *
 import os
+from scipy.stats import jarque_bera
 import matplotlib.pyplot as plt
-
+from functools import partial
+from itertools import repeat
+from multiprocessing import Pool, freeze_support
 from dateutil.parser import parse
 from pandas.tseries.offsets import BDay
 import pickle as pkl
@@ -21,15 +31,9 @@ from fathon import fathonUtils as fu
 import itertools
 import pyinform as pyinf
 import pingouin as pig
-from scipy.stats import entropy
-from scipy.spatial.distance import jensenshannon
-from scipy.special import kl_div
+import seaborn as sns
 import time
-import matplotlib.ticker as mtick
-dataFolder = lobFut.dataFolder
-quotes = [f for f in os.listdir(dataFolder) if str('_quotes') in f]
-trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
-
+import pickle as pkl
 
 # Lets create a function that shifted your dataframe first before calling the corr().
 # Let us break down what we hope to accomplish, and then translate that into code.
@@ -38,121 +42,112 @@ trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
 # For each value of N (1-6 in our case) I want to make a new column
 # for that feature representing the Nth prior hour's measurement.
 
-def df_derived_by_shift(df, lag=0, NON_DER=[]):
-    df = df.copy()
-    if not lag:
-        return df
-    cols = {}
-    for i in range(1, lag + 1):
-        for x in list(df.columns):
-            if x not in NON_DER:
-                if not x in cols:
-                    cols[x] = ['{}_{}'.format(x, i)]
-                else:
-                    cols[x].append('{}_{}'.format(x, i))
-    for k, v in cols.items():
-        columns = v
-        dfn = pd.DataFrame(data=None, columns=columns, index=df.index)
-        i = 1
-        for c in columns:
-            dfn[c] = df[k].shift(periods=i)
-            i += 1
-        df = pd.concat([df, dfn], axis=1)
-    return df
+elements = '/media/ak/Elements/OrderBookProcessedData'
+experimentsLocation = '/media/ak/T7/June4th2022Experiments'
+bars = ['volume_bar', 'calendar_bar', 'usd_volume_bar', 'tick_bar']
+jb_dict = dict()
+standarised_returns = defaultdict(dict)
+dataFolder = lobFut.dataFolder
+quotes = [f for f in os.listdir(dataFolder) if str('_quotes') in f]
+trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
+
+## THIS NEEEEEEEE DOCUMENTATION
+
+symbols = sorted(os.listdir(elements))
+bars = ['volume_bar', 'calendar_bar', 'usd_volume_bar', 'tick_bar']
 
 
-def get_test_stats(bar_types, bar_returns, test_func, *args, **kwds):
-    dct = {bar: (int(bar_ret.shape[0]), test_func(bar_ret, *args, **kwds))
-           for bar, bar_ret in zip(bar_types, bar_returns)}
-    df = (pd.DataFrame.from_dict(dct)
-          .rename(index={0: 'sample_size', 1: f'{test_func.__name__}_stat'})
-          .T)
-    return df
+def jb_calculation(symbolIdx, filesIdx):
+    # add location variables. these i have to figure how to abstract away
+    print(symbols[symbolIdx])
+    procsdSymbolFolder = os.path.join(elements, symbols[symbolIdx])
+    print(procsdSymbolFolder)
+    files = sorted(os.listdir(procsdSymbolFolder))
+
+    fileLocation = os.path.join(procsdSymbolFolder, files[filesIdx])
+    print(fileLocation)
+
+    # pick the various files
+    volume_bar_dict = open_pickle_filepath(fileLocation)[bars[0]]
+    calendar_bar_dict = open_pickle_filepath(fileLocation)[bars[1]]
+    usd_volume_bar_dict = open_pickle_filepath(fileLocation)[bars[2]]
+    tick_bar_dict = open_pickle_filepath(fileLocation)[bars[3]]
+    # get the dataframes
+
+    volume_bar_df = volume_bar_dict[list(volume_bar_dict.keys())[0]]
+    calendar_bar_df = calendar_bar_dict[list(calendar_bar_dict.keys())[0]]
+    usd_volume_df = usd_volume_bar_dict[list(usd_volume_bar_dict.keys())[0]]
+    tick_bar_df = tick_bar_dict[list(usd_volume_bar_dict.keys())[0]]
+    # returns
+
+    vb_ret = returns(volume_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # volume
+    tb_ret = returns(tick_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # tick
+    usdvb_ret = returns(usd_volume_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # usd volume
+    cb_ret = returns(calendar_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # calendar
+    # calculating JB statistic
+    jb_value_tick, _ = jarque_bera(tb_ret)
+    jb_value_vol, _ = jarque_bera(vb_ret)
+    jb_value_dollar, _ = jarque_bera(usdvb_ret)
+    jb_value_calendar, _ = jarque_bera(cb_ret)
+
+    jb_test_df = pd.DataFrame(data={'jarque_bera_results': [jb_value_tick,
+                                                            jb_value_vol,
+                                                            jb_value_dollar,
+                                                            jb_value_calendar]
+                                    },
+                              index=['tick', 'vol', 'dollar', 'calendar'])
+    pickle_out_returns = os.path.join(experimentsLocation,
+                                      "".join((str(symbols[symbolIdx]), "_" + str(filesIdx) + "_jb_stats.pkl")))
+    pickle.dump(jb_test_df, open(pickle_out_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+    print("produced and saved JB stats for :", symbols[symbolIdx], filesIdx)
+
+
+def standarised_returns(symbolIdx, filesIdx):
+    standarised_returns = defaultdict(dict)
+    # add location variables. these i have to figure how to abstract away
+    ### all files here ###
+    procsdSymbolFolder = os.path.join(elements, symbols[symbolIdx])
+    files = sorted(os.listdir(procsdSymbolFolder))
+    fileLocation = os.path.join(procsdSymbolFolder, files[filesIdx])
+
+    volume_bar_dict = open_pickle_filepath(fileLocation)[bars[0]]
+    calendar_bar_dict = open_pickle_filepath(fileLocation)[bars[1]]
+    usd_volume_bar_dict = open_pickle_filepath(fileLocation)[bars[2]]
+    tick_bar_dict = open_pickle_filepath(fileLocation)[bars[3]]
+    ### all dataframes here ###
+
+    volume_bar_df = volume_bar_dict[list(volume_bar_dict.keys())[0]]
+    calendar_bar_df = calendar_bar_dict[list(calendar_bar_dict.keys())[0]]
+    usd_volume_df = usd_volume_bar_dict[list(usd_volume_bar_dict.keys())[0]]
+    tick_bar_df = tick_bar_dict[list(usd_volume_bar_dict.keys())[0]]
+
+    vb_ret = returns(volume_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # volume
+    tb_ret = returns(tick_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # tick
+    usdvb_ret = returns(usd_volume_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # usd volume
+    cb_ret = returns(calendar_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # calendar
+
+    tick_standard = (tb_ret - tb_ret.mean()) / tb_ret.std()
+    volume_standard = (vb_ret - vb_ret.mean()) / vb_ret.std()
+    dollar_standard = (usdvb_ret - usdvb_ret.mean()) / usdvb_ret.std()
+    cb_standard = (cb_ret - cb_ret.mean()) / cb_ret.std()
+    standarised_returns['tick'][filesIdx] = tick_standard
+    standarised_returns['calendar'][filesIdx] = cb_standard
+    standarised_returns['volume'][filesIdx] = volume_standard
+    standarised_returns['dollar'][filesIdx] = dollar_standard
+
+    pickle_out_returns = os.path.join(experimentsLocation,
+                                      "".join((str(symbols[symbolIdx]), "_" + str(filesIdx) + "_standard_returns.pkl")))
+    pickle.dump(standarised_returns, open(pickle_out_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    return standarised_returns
+
 
 if __name__ == '__main__':
+    a_args = [5] # symbol
+    second_arg = [f for f in range(0, 20, 1)] # range of files
 
-    symbolIdx = 0
-
-    symbols = [f.split("_")[0] for f in quotes]
-#
-    symbol = sorted(symbols)[symbolIdx]
-    print(symbol)
-    quotesFileCh = os.path.join(dataFolder, quotes[symbolIdx])
-    tradesFileCh = os.path.join(dataFolder, trades[symbolIdx])
-#
-    # # get common Dates
-    quotesDates = sorted([f.split(".csv")[0] for f in os.listdir(quotesFileCh)])
-    tradesDates = sorted([f.split(".csv")[0] for f in os.listdir(tradesFileCh)])
-    intersectionDates = list(set(quotesDates).intersection(tradesDates))
-
-    # params i need for fathon
-    winSizes = fu.linRangeByStep(5, 50)
-    revSeg = True
-    qs = np.arange(-3, 4, 0.1)
-    polOrd = 3
-    # load all teh dataframes at once with this
-    start = time.time()
-
-    # go through all the dataframes and take out n, f and h, h_ intercept
-    # somehow one list comprehension blows up in memory
-
-    h_dict = defaultdict(dict)
-
-    trades_cols = ['size', 'time', 'type', 'value']
-
-    # params for the clocks
-
-    calendar_resample_freq = "300S"
-    trade_volume_width = 100
-    ticks_width = 100
-    usd_volume_width = 100
-    dates_choice = intersectionDates[0:5]
-
-    testClass = DataLoader(data_location=dataFolder,
-                           symbol=symbol,
-                           dates=dates_choice,
-                           use_columns=trades_cols,
-                           calendar_resample=calendar_resample_freq,
-                           trade_volume_width=trade_volume_width,
-                           ticks_width=ticks_width,
-                           usd_volume_width=usd_volume_width)
-
-    hash_of_file = "_".join(
-        (str(symbol), "volume_width", str(trade_volume_width), "calendar_resample", str(calendar_resample_freq)))
-
-    # load data
-    input_dict = testClass.load_and_format_data()
-
-    tick_bar_dfs = []
-    volume_bar_dfs = []
-    usd_volume_bar_dfs = []
-    calendar_bar_dfs = []
-    dates = list(input_dict.keys())
-
-    bar_returns = dict()
-    bars_dicts = defaultdict(dict)
-    end = time.time()
-    print(end - start) # just so i can keep track how long it takes to print
-    print(dates)
-    start2 = time.time()
-    for date in dates:
-        df = testClass.load_and_format_data()[str(date)]
-        input_dict = testClass.get_bars(df)
-        tick_bar_df = testClass.get_concat_data(testClass._bars_dict)['tick_bars']
-        volume_bar_df = testClass.get_concat_data(testClass._bars_dict)['volume_bars']
-        usd_volume_bar_df = testClass.get_concat_data(testClass._bars_dict)['usd_volume_bars']
-        calendar_bar_df = testClass.get_concat_data(testClass._bars_dict)['calendar_bars']
-        vr = returns(volume_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # volume
-        tr = returns(tick_bar_df.micro_price_close).replace([np.inf, -np.inf], 0)  # tick
-        dr = returns(usd_volume_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # usd volume
-        df_ret = returns(calendar_bar_df.micro_price_close).dropna().replace([np.inf, -np.inf], 0)  # calendar
-        bar_returns[date] = {'tick': tr,
-                             'volume': vr,
-                             'dollar': dr,
-                             'calendar': df_ret}
-        bars_dicts[date]['tick'] = tick_bar_df
-        bars_dicts[date]['volume'] = volume_bar_df
-        bars_dicts[date]['calendar'] = calendar_bar_df
-        bars_dicts[date]['dollar'] = usd_volume_bar_df
-    end2 = time.time()
-    print(end2 - start2)
+    freeze_support()
+# produces simple standarised returns and calculates jB statistic
+    with Pool() as pool:
+        L = pool.starmap(standarised_returns, list(itertools.product(a_args, second_arg)))
+        K = pool.starmap(jb_calculation, list(itertools.product(a_args, second_arg)))
