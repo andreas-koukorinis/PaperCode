@@ -31,18 +31,18 @@ import time
 import pickle as pkl
 import seaborn as sns
 
-plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle3.mplstyle'))
+
 elements = '/media/ak/Elements/OrderBookProcessedData'
 experimentsLocation = '/media/ak/T7/June4th2022Experiments'
 bars = ['volume_bar', 'calendar_bar', 'usd_volume_bar', 'tick_bar']
-plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle3.mplstyle'))
+# plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle.mplstyle'))
 figures_destination = '/home/ak/Documents/Research/Papers/figures/'
 
 jb_dict = dict()
 standarised_returns = defaultdict(dict)
-dataFolder = lobFut.dataFolder
-quotes = [f for f in os.listdir(dataFolder) if str('_quotes') in f]
-trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
+# dataFolder = lobFut.dataFolder
+# quotes = [f for f in os.listdir(dataFolder) if str('_quotes') in f]
+# trades = [f for f in os.listdir(dataFolder) if str('_trades') in f]
 
 
 def produce_dict(user_dict):

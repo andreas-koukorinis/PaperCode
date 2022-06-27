@@ -1,0 +1,12 @@
+loc_activityClockData = '/media/ak/My Passport/ActivityClockData'
+loc_ProcessedDataForExperiments = '/media/ak/My Passport1/ExperimentData/ProcessedDataForExperiments'
+list_activityClockData = os.listdir('/media/ak/My Passport/ActivityClockData')
+list_ProcessedDataForExperiments = os.listdir('/media/ak/My Passport1/ExperimentData/ProcessedDataForExperiments')
+os_data = /media/ak/OS/Data
+['FuturesDataSemiProcessed']: all sorts of data that has been manipulated in one way shape or form --> same folder in T7!
+['LOBDataPurhcased']: contains data purchased
+
+/media/ak/My Passport1/ExperimentData : contains experiment folders from experiment from April of 2021!
+
+
+testing out experiments away from MFDFA - October 2021: contains the layout on how to do the crosscorrelation experiments

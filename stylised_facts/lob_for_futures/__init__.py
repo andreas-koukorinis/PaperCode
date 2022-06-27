@@ -84,7 +84,7 @@ class volatilityEstimation(object):
         # median sampling frequency
 
         self.z = pd.DataFrame(
-            [((x.hour * 60 + x.minute) * 60 + x.second) for x in self.df['timestamp_open']]).diff().fillna(0).astype(
+            [((x.hour * 60 + x.minute) * 60 + x.second) for x in self.df['TimeStamp_open']]).diff().fillna(0).astype(
             'float64')
         self.clean_arrival_rates = np.asarray(
             self.z[(self.z > self.z.quantile(0.003)) & (self.z < self.z.quantile(0.97))].dropna()).astype('float64')
@@ -93,7 +93,7 @@ class volatilityEstimation(object):
 
     def arrival_rates(self):
 
-        z = pd.DataFrame([((x.hour * 60 + x.minute) * 60 + x.second) for x in self.df['timestamp_open']]).diff().fillna(
+        z = pd.DataFrame([((x.hour * 60 + x.minute) * 60 + x.second) for x in self.df['TimeStamp_open']]).diff().fillna(
             0).astype('float64')
         clean_arrival_rates = np.asarray(z[(z > z.quantile(0.003)) & (z < z.quantile(0.97))].dropna()).astype('float64')
         # clean arrival rates after i remove all the outliers
