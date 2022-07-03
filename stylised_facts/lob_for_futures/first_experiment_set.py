@@ -43,7 +43,7 @@ import pickle as pkl
 # for that feature representing the Nth prior hour's measurement.
 
 elements = '/media/ak/Elements/OrderBookProcessedData'
-experimentsLocation = '/media/ak/T7/June4th2022Experiments'
+experimentsLocation = '/media/ak/WorkDrive/Data/July2nd2022_Experiments'
 bars = ['volume_bar', 'calendar_bar', 'usd_volume_bar', 'tick_bar']
 jb_dict = dict()
 standarised_returns = defaultdict(dict)
@@ -143,8 +143,8 @@ def standarised_returns(symbolIdx, filesIdx):
 
 
 if __name__ == '__main__':
-    a_args = [5] # symbol
-    second_arg = [f for f in range(0, 20, 1)] # range of files
+    a_args = [3] # symbol
+    second_arg = [f for f in range(0, 100, 1)] # range of files
 
     freeze_support()
 # produces simple standarised returns and calculates jB statistic

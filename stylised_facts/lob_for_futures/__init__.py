@@ -571,3 +571,12 @@ def apply_micro_structure_features(df):
 
     # TODO: do we want to be using pct_change here or log returns?
     return df
+
+
+# locations
+elements = '/media/ak/Elements/OrderBookProcessedData'
+experimentsLocation = '/media/ak/WorkDrive/Data/July2nd2022_Experiments'
+
+# params
+symbols = sorted(os.listdir(elements))
+bars = ['volume_bar', 'calendar_bar', 'usd_volume_bar', 'tick_bar']
