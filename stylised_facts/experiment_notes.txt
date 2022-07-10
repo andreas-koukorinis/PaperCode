@@ -10,3 +10,5 @@ os_data = /media/ak/OS/Data
 
 
 testing out experiments away from MFDFA - October 2021: contains the layout on how to do the crosscorrelation experiments
+
+fix the issue with the STL residuals so we can de-trend based on the residuals!
