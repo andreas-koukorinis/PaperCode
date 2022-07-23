@@ -25,8 +25,8 @@ import glob
 
 from fathon import fathonUtils as fu
 import itertools
-import pyinform as pyinf
-import pingouin as pig
+# import pyinform as pyinf
+# import pingouin as pig
 import time
 import pickle as pkl
 import seaborn as sns
