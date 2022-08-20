@@ -14,14 +14,8 @@ import lob_for_futures as lobFut
 from lob_for_futures import *
 import os
 from scipy.stats import jarque_bera
-import matplotlib.pyplot as plt
-from functools import partial
-from itertools import repeat
+
 from multiprocessing import Pool, freeze_support
-from dateutil.parser import parse
-from pandas.tseries.offsets import BDay
-import pickle as pkl
-import fnmatch
 import pickle
 import datetime as dt
 from datetime import timedelta
@@ -29,11 +23,6 @@ import glob
 import fathon
 from fathon import fathonUtils as fu
 import itertools
-import pyinform as pyinf
-import pingouin as pig
-import seaborn as sns
-import time
-import pickle as pkl
 
 # Lets create a function that shifted your dataframe first before calling the corr().
 # Let us break down what we hope to accomplish, and then translate that into code.
@@ -143,11 +132,11 @@ def standarised_returns(symbolIdx, filesIdx):
 
 
 if __name__ == '__main__':
-    a_args = [3] # symbol
-    second_arg = [f for f in range(0, 100, 1)] # range of files
+    a_args = [3]  # symbol
+    second_arg = [f for f in range(0, 100, 1)]  # range of files
 
     freeze_support()
-# produces simple standarised returns and calculates jB statistic
+    # produces simple standarised returns and calculates jB statistic
     with Pool() as pool:
         L = pool.starmap(standarised_returns, list(itertools.product(a_args, second_arg)))
         K = pool.starmap(jb_calculation, list(itertools.product(a_args, second_arg)))

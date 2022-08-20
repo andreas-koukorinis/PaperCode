@@ -19,7 +19,6 @@ import glob
 import fathon
 from fathon import fathonUtils as fu
 import itertools
-import pyinform as pyinf
 import pingouin as pig
 from scipy.stats import entropy
 from scipy.spatial.distance import jensenshannon
