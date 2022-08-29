@@ -82,6 +82,7 @@ class volatilityEstimation(object):
         self.log_hl = (df[str(self.column_high)] / df[str(self.column_low)]).apply(np.log)
         self.log_co = (df[str(self.column_close)] / df[str(self.column_open)]).apply(np.log)
         # median sampling frequency
+        print(self.df['TimeStamp_open']) # remove this later
 
         self.z = pd.DataFrame(
             [((x.hour * 60 + x.minute) * 60 + x.second) for x in self.df['TimeStamp_open']]).diff().fillna(0).astype(
@@ -385,8 +386,9 @@ class DataLoader:
 
                 mergedFile[date] = LOB
 
-            except FileNotFoundError:
+            except [FileNotFoundError, AttributeError]:
                 self._logger.info(f"Data for day {date} does not exist. Skipping this day")
+                pass
             return mergedFile
 
     @staticmethod

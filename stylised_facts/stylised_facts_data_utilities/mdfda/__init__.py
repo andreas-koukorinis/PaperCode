@@ -88,8 +88,8 @@ def compFq(rms, qs):
 
       F[scale] = pow(mean(RMS[scale]^q),1.0/q)
 
-    This function computes F for all qs at each scale.
-    The result is a 2d NxM array (N = rms.shape[0], M = len(qs))
+    This function computes F for all qs_ at each scale.
+    The result is a 2d NxM array (N = rms.shape[0], M = len(qs_))
 
     Parameters
     ----------
@@ -101,8 +101,8 @@ def compFq(rms, qs):
     # >>> X = cumsum(0.1*randn(8000))
     # >>> scales = (2**arange(4,10)).astype('i4')
 	# >>> RMS = fastRMS(X,scales)
-    # >>> qs = arange(-5,5.1,1.0)
-    # >>> loglog(scales,compFq(RMS,qs),'.-')
+    # >>> qs_ = arange(-5,5.1,1.0)
+    # >>> loglog(scales,compFq(RMS,qs_),'.-')
 
     """
     out = zeros((rms.shape[0], len(qs)), 'f8')
@@ -280,8 +280,8 @@ def compFq(rms, qs):
 
       F[scale] = pow(mean(RMS[scale]^q),1.0/q)
 
-    This function computes F for all qs at each scale.
-    The result is a 2d NxM array (N = rms.shape[0], M = len(qs))
+    This function computes F for all qs_ at each scale.
+    The result is a 2d NxM array (N = rms.shape[0], M = len(qs_))
 
     Parameters
     ----------
@@ -293,8 +293,8 @@ def compFq(rms, qs):
     # >>> X = cumsum(0.1*randn(8000))
     # >>> scales = (2**arange(4,10)).astype('i4')
 	# >>> RMS = fastRMS(X,scales)
-    # >>> qs = arange(-5,5.1,1.0)
-    # >>> loglog(scales,compFq(RMS,qs),'.-')
+    # >>> qs_ = arange(-5,5.1,1.0)
+    # >>> loglog(scales,compFq(RMS,qs_),'.-')
 
     """
     out = zeros((rms.shape[0], len(qs)), 'f8')

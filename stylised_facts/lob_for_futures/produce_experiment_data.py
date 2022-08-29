@@ -1,51 +1,60 @@
 import pandas as pd
 import numpy as np
 import sys
-
 import multiprocessing
 import time
-
-sys.path.insert(0, '/directory/tothe/handshakefile/')
-sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 import stylised_facts_data_utilities as sfd_utils
 import lob_for_futures as lobfut
 import os
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from multiprocessing import Pool, freeze_support
 import pickle
+from multiprocessing import Pool
 
 scaler = MinMaxScaler()
 standard_scaler = StandardScaler()
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
-from multiprocessing import Pool
 
+sys.path.insert(0, '/directory/tothe/handshakefile/')
+sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 ## data files
 laptop_OS_folder = '/media/ak/OS/Data/FuturesDataSemiProcessed'
 LaCie_ProcessedData = '/media/ak/LaCie/ProcessedSampledData/'
 # returns_data = '/media/ak/T7/August11th2022Experiments/Returns/'
-t7 = '/media/ak/T7/'
+t7 = '/media/ak/T71/'
+t7_folder = os.path.join(t7, 'FuturesDataSemiProcessed')
 # june_ext = os.path.join(t7, 'June4th2022Experiments')
 # returns_data = [f for f in os.listdir(june_ext) if '_returns' in f]
-experimentsLocation = '/media/ak/T7/August11th2022Experiments/'
+experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
 
 # here i start with RX1 to do all the experiments in one go
 symbols = os.listdir(laptop_OS_folder)
-symbol_test_folder = os.path.join(laptop_OS_folder, symbols[0])
-rx_folder = os.path.join(laptop_OS_folder, 'RX1')
-files = os.listdir(rx_folder)
+
+
+# symbol_test_folder = os.path.join(laptop_OS_folder, symbols[0])
+# rx_folder = os.path.join(laptop_OS_folder, 'RX1')
+# du_folder = os.path.join(t7_folder,  'DU1')                                                                       , 'FB1')
+# make this a bit more dynamic to take any function in here
+# files = os.listdir(du_folder)
 
 
 def produce_experiment_data(chosen_df):
-    # this is somewhat unit-tested
+    """
+    # this is somewhat unit-tested in the August 7th 2022 notebook
     # function to produce dataframes for experiments
-    # written in August 202
+    # input: chosen df - this is a dataframe that we apply the microstructure features and the vol estimation features
+    # output: experiment - dataframe with the features we want experiments for
+    # written in August 2022
     # re-write it as part of the _init_ file
+
+    """
     chosen_df_micro = lobfut.apply_micro_structure_features(chosen_df)  # get micro structure df
     vol_class = lobfut.volatilityEstimation(chosen_df)  # get the vol class
 
     # features I need: micro_price changes / vols /skews /etc:
+
     experiment_df = chosen_df_micro.loc[:, ['micro_price', 'price_imbalance',
                                             'pct_change_micro_price', 'weighted_activity_spread', ]]
     experiment_df['GK_vol'] = pd.Series(
@@ -83,32 +92,33 @@ def produce_experiment_data(chosen_df):
 
 
 if __name__ == '__main__':
-    # files_idx = 1
+    """
+    function that takes the index of a file, that index corresponds to a point in a list of files that are already
+    aligned between trades and quotes and have been information clock processed
+    then applies the extraction of features
+    """
 
-    def produce_and_dump(files_idx):
-        date_idx = files[files_idx].split(".")[0]
-        idx_file = os.path.join(rx_folder, files[files_idx])
-        tick_df = pd.read_pickle(idx_file)[date_idx]['tick']
-        volume_df = pd.read_pickle(idx_file)[date_idx]['volume']
-        calendar_df = pd.read_pickle(idx_file)[date_idx]['calendar']
-        dollar_df = pd.read_pickle(idx_file)[date_idx]['dollar']
+    def produce_and_dump(files_idx_):
+        symbol = 'FB1' # and this
+        symbol_folder_path = os.path.join(t7_folder, str(symbol))
+        files = os.listdir(symbol_folder_path)
 
-        output_dict = {'tick': produce_experiment_data(tick_df),
-                       'volume': produce_experiment_data(volume_df),
-                       'calendar': produce_experiment_data(calendar_df),
-                       'dollar': produce_experiment_data(dollar_df),
-                       }
+        choice_bar = 'dollar' # change this
+        date_idx = files[files_idx_].split(".")[0]
+        print(date_idx)
 
-        print(output_dict)
-        pickle_out_returns = os.path.join(experimentsLocation,
-                                          "".join((str('RX1'), "_" + str(date_idx) + "_experiments_dict.pkl")))
-        pickle.dump(output_dict, open(pickle_out_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+        idx_file_path = os.path.join(symbol_folder_path,
+                                     files[files_idx_])  # the input here needs to be dynamic not du_folder or rx_folder
+        choice_df = pd.read_pickle(idx_file_path)[date_idx][choice_bar]
+        exp_df = produce_experiment_data(choice_df)
+        pickle_out_returns = os.path.join(experimentsLocation, "".join(
+            (str(symbol) + "_" + str(choice_bar) + "_" + str(date_idx) + "_exp_df.pkl")))
+        pickle.dump(exp_df, open(pickle_out_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
         print('saved')
 
-
-    pool = Pool(3)
+    pool = Pool(6)
     start_time = time.perf_counter()
-    processes = [pool.apply_async(produce_and_dump, args=(files_idx,)) for files_idx in range(0, 110)]
+    processes = [pool.apply_async(produce_and_dump, args=(files_idx_,)) for files_idx_ in range(0, 138)]
     result = [p.get() for p in processes]
     finish_time = time.perf_counter()
     print(f"Program finished in {finish_time - start_time} seconds")
