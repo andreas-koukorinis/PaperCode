@@ -29,7 +29,7 @@ def win_Sizes_len(data):
     return round(len(to_agg(data)), -2)
 
 
-class MfdfaQuantities(object):
+class mfdfaquantities(object):
     """
  winSizes : numpy ndarray
             Array of window's sizes.
@@ -104,5 +104,3 @@ if __name__ == '__main__':
     polOrd = 1
     testClassOne = MfdfaQuantities(data_input, winSizes_, qs, revSeg, polOrd)
     print(testClassOne.compute_mass_exponents())
-
-

@@ -4,111 +4,100 @@ from fathon import fathonUtils as fu
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import sys
 import os
+from collections import defaultdict
+from multiprocessing import Pool, freeze_support
+import time
+import itertools
+
+sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 import numpy as np
+from mdfda import mdfda_experiments_utils as mdf
+import pickle
 
 scaler = MinMaxScaler()
 standard_scaler = StandardScaler()
 
 sys.path.insert(0, '/directory/tothe/handshakefile/')
-sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 
 
-def to_agg(data):
-    return fu.toAggregated(data)
-
-
-def win_Sizes_len(data):
-    return round(len(to_agg(data)), -2)
-
-
-class mfdfaquantities(object):
-    """
- winSizes : numpy ndarray
-            Array of window's sizes.
-        qList : float or iterable or numpy ndarray
-            List of q-orders used to compute `F`.
-        polOrd : int, optional
-            Order of the polynomial to be fitted in every window (default : 1).
-        revSeg : bool, optional
-            If True, the computation of `F` is repeated starting from the end of the time series (default : False).
-"""
-
-    def __init__(self, data, winSizes, qs, revSeg, polOrd):
-        self.data = data
-        self.winSizes = winSizes
-        self.qs = qs
-        self.revSeg = revSeg
-        self.polOrd = polOrd
-        self.pymfdfa = fathon.MFDFA(self.data)
-
-    def n_F_output(self):
-        """
-        # F : numpy ndarray
-           Returns
-            -------
-            numpy ndarray
-                Array `n` of window's sizes.
-            numpy ndarray
-                qxn array `F` containing the values of the fluctuations in every window for every q-order.
-        """
-        n, F = self.pymfdfa.computeFlucVec(self.winSizes, self.qs, self.revSeg, self.polOrd)
-        return n, F
-
-    def H_and_H_intcpt_output(self):
-        """
-        listH : numpy ndarray
-        # Array containing the values of the slope of the fit at every q-order.
-        # fit of the fluctuation values
-                Returns
-            -------
-            numpy ndarray
-                Slope of the fit for every q-order.
-            numpy ndarray
-                Intercept of the fit for every q-order.
-
-
-        """
-        list_H, list_H_intercept = self.pymfdfa.fitFlucVec()
-        return list_H, list_H_intercept
-
-    def compute_mass_exponents(self):
-        tau = self.pymfdfa.computeMassExponents()
-        return tau
-
-    def compute_multi_fractal_spectrum(self):
-        alpha, mfSpect = self.pymfdfa.computeMultifractalSpectrum()
-        return alpha, mfSpect
-
-
-def read_pkl_idx(files, file_idx):
-    file_idx_loc = os.path.join(experimentsLocation, files[file_idx])
+def read_pkl_idx(file_loc, file_idx):
+    symbol = 'JB1'
+    files_input_Location = os.path.join(file_loc, symbol)
+    files = os.listdir(files_input_Location)
+    file_idx_loc = os.path.join(files_input_Location, files[file_idx])
     dict_idx = pd.read_pickle(file_idx_loc)
-    tick_ = dict_idx['tick']
-    volume_ = dict_idx['volume']
-    calendar_ = dict_idx['calendar']
-    dollar_ = dict_idx['dollar']
-    return tick_, volume_, calendar_, dollar_
+    return dict_idx
 
 
-experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
-if __name__ == '__main__':
-    rx_files = [f for f in os.listdir(experimentsLocation) if str('RX1_') in f]
-    print(rx_files)
-    tick, volume, calendar, dollar = read_pkl_idx(rx_files, 1)
-    data = tick.pct_change_micro_price
-    print(data)
+def mfdfa_input_rx(bars_dict, bar_type_):
+    df_output = bars_dict[bar_type_]
+    return df_output
 
-    winSizes = fu.linRangeByStep(10, 2000)
+
+def mfdfa_output(lob_df_input, bar_type_):
+    """
+    function that takes input:
+    indexed dictionary of bars, chosen bar type
+    lob_df_input: this is the precise experiment dataframe
+    returns mfdfa output
+    NB: needs to get edited to take column type as well
+    NB 2: needs a params file
+    """
+    raw_data = lob_df_input.pct_change_micro_price  # this is the chosen data to use
+    # follows Fathon Example from here onwards
+    data_input = mdf.to_agg(raw_data)
+    winSizes = fu.linRangeByStep(10, 2000)  # this needs to be more dynamic
     qs = np.arange(-3, 4, 0.1)
     revSeg = True
     polOrd = 1
-    data_ = volume.pct_change_micro_price # chose data
-    testClass = mfdfaquantities(data_, winSizes, qs, revSeg, polOrd)
-
-    # need to figure out how to parallelise this better
+    testClass = mdf.mfdfaquantities(data_input, winSizes, qs, revSeg, polOrd)
     n, F = testClass.n_F_output()
     list_H, list_H_intercept = testClass.H_and_H_intcpt_output()
     tau = testClass.compute_mass_exponents()
     alpha, mfSpect = testClass.compute_multi_fractal_spectrum()
 
-    print(alpha)
+    mfdfa_output_dict_ = defaultdict(dict)
+    mfdfa_output_dict_[bar_type_]['n_F'] = dict(zip(n, F))
+    mfdfa_output_dict_[bar_type_]['list_H'] = list_H
+    mfdfa_output_dict_[bar_type_]['list_H_intercept'] = list_H_intercept
+    mfdfa_output_dict_[bar_type_]['tau'] = tau
+    mfdfa_output_dict_[bar_type_]['alpha'] = alpha
+    mfdfa_output_dict_[bar_type_]['mfSpect'] = mfSpect
+
+    return mfdfa_output_dict_
+
+
+experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
+expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
+
+
+if __name__ == '__main__':
+    symbol = 'JB1'
+    symbol_input_files_loc = os.path.join(experimentsLocation, 'ExperimentInputFiles')
+    bar_type = 'tick'
+
+    symbol_files = [f for f in os.listdir(symbol_input_files_loc) if str(bar_type) in f]
+
+
+    def all_in_calculations(symbol_file_idx_, bar_type_ ):
+        symbol_ = 'JB1_'
+        symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
+        print('doing index',  symbol_file_idx_)
+        bars_dict_idx = read_pkl_idx(symbol_input_files_loc_, symbol_file_idx_) # output dictionary with 4
+        # types
+        mfdfa_dict_output = mfdfa_output(bars_dict_idx, bar_type_)
+        test_output_loc = os.path.join(expOneLocation,
+                                       str(symbol_) + str(symbol_file_idx_) + str(bar_type_) + "_mfdfa.pkl")
+        pickle.dump(mfdfa_dict_output, open(test_output_loc, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+        print('saved')
+        return mfdfa_dict_output
+    st = time.time()
+    a_args = [f for f in range(0, 15, 1)]  # file
+    second_arg = ['tick', 'volume', 'dollar']  # range of files
+    freeze_support()
+    # takes bar and file and produces the output
+    with Pool() as pool:
+        L = pool.starmap(all_in_calculations, list(itertools.product(a_args, second_arg)))
+    et = time.time()
+    elapsed = et - st
+    print('Elapsed time: ', elapsed)

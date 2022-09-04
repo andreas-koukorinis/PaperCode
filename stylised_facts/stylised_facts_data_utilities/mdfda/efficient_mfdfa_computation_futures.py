@@ -7,7 +7,7 @@ import lob_for_futures as lobFut
 from lob_for_futures import *
 import os
 import matplotlib.pyplot as plt
-
+from collections import defaultdict
 from dateutil.parser import parse
 from pandas.tseries.offsets import BDay
 import pickle as pkl
