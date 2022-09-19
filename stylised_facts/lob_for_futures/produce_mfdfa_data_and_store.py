@@ -72,7 +72,7 @@ expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 
 
 if __name__ == '__main__':
-    symbol = 'JB1'
+    symbol = 'FB1'
     symbol_input_files_loc = os.path.join(experimentsLocation, 'ExperimentInputFiles')
     bar_type = 'tick'
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
 
     def all_in_calculations(symbol_file_idx_, bar_type_ ):
-        symbol_ = 'JB1_'
+        symbol_ = 'FB1_'
         symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
         print('doing index',  symbol_file_idx_)
         bars_dict_idx = read_pkl_idx(symbol_input_files_loc_, symbol_file_idx_) # output dictionary with 4
@@ -92,8 +92,8 @@ if __name__ == '__main__':
         print('saved')
         return mfdfa_dict_output
     st = time.time()
-    a_args = [f for f in range(0, 15, 1)]  # file
-    second_arg = ['tick', 'volume', 'dollar']  # range of files
+    a_args = [f for f in range(12, 35, 1)]  # file
+    second_arg = ['tick', 'volume', 'dollar', 'calendar']  # range of files
     freeze_support()
     # takes bar and file and produces the output
     with Pool() as pool:
