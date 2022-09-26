@@ -98,12 +98,13 @@ if __name__ == '__main__':
     then applies the extraction of features
     """
 
+
     def produce_and_dump(files_idx_):
-        symbol = 'FB1' # and this
+        symbol = 'FB1'  # and this
         symbol_folder_path = os.path.join(t7_folder, str(symbol))
         files = os.listdir(symbol_folder_path)
 
-        choice_bar = 'dollar' # change this
+        choice_bar = 'dollar'  # change this
         date_idx = files[files_idx_].split(".")[0]
         print(date_idx)
 
@@ -115,6 +116,7 @@ if __name__ == '__main__':
             (str(symbol) + "_" + str(choice_bar) + "_" + str(date_idx) + "_exp_df.pkl")))
         pickle.dump(exp_df, open(pickle_out_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
         print('saved')
+
 
     pool = Pool(6)
     start_time = time.perf_counter()
