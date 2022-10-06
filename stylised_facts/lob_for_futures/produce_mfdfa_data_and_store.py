@@ -10,6 +10,7 @@ import time
 import itertools
 
 sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
+sys.path.append('/home/ak/Research/PaperCode/stylised_facts')
 import numpy as np
 from mdfda import mdfda_experiments_utils as mdf
 import pickle
@@ -67,7 +68,7 @@ def mfdfa_output(lob_df_input, bar_type_):
     return mfdfa_output_dict_
 
 
-experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
+experimentsLocation = '/media/ak/T7/August11th2022Experiments/'
 expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 
 
