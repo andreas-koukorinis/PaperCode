@@ -40,7 +40,7 @@ import pickle
 
 trades_cols = ['size', 'time', 'type', 'value']
 experimentsDestination = '/media/ak/T7/MFDFA Experiments'
-plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle.mplstyle'))
+#plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle.mplstyle'))
 informationClockFolder = '/media/ak/T7/FuturesDataSemiProcessed'
 
 

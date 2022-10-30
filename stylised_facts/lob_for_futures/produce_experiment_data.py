@@ -23,24 +23,26 @@ pd.set_option('display.width', 1000)
 sys.path.insert(0, '/directory/tothe/handshakefile/')
 sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 ## data files
+<<<<<<< HEAD
 laptop_OS_folder = '/media/ak/T71/FuturesDataSemiProcessed'
+=======
+laptop_OS_folder = '/media/ak/T7/FuturesDataSemiProcessed'
+>>>>>>> e14616da7957bfc625abfbeb687d3743fe28a5d4
 LaCie_ProcessedData = '/media/ak/LaCie/ProcessedSampledData/'
 # returns_data = '/media/ak/T7/August11th2022Experiments/Returns/'
-t7 = '/media/ak/T71/'
+t7 = '/media/ak/T7/'
 t7_folder = os.path.join(t7, 'FuturesDataSemiProcessed')
 # june_ext = os.path.join(t7, 'June4th2022Experiments')
 # returns_data = [f for f in os.listdir(june_ext) if '_returns' in f]
-experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
+experimentsLocation = '/media/ak/T7/August11th2022Experiments/'
 
 # here i start with RX1 to do all the experiments in one go
 symbols = os.listdir(laptop_OS_folder)
 
 
-# symbol_test_folder = os.path.join(laptop_OS_folder, symbols[0])
-# rx_folder = os.path.join(laptop_OS_folder, 'RX1')
-# du_folder = os.path.join(t7_folder,  'DU1')                                                                       , 'FB1')
-# make this a bit more dynamic to take any function in here
-# files = os.listdir(du_folder)
+# symbol_test_folder = os.path.join(laptop_OS_folder, symbols[0]) rx_folder = os.path.join(laptop_OS_folder,
+# 'RX1') du_folder = os.path.join(t7_folder,  'DU1')
+# , 'FB1') make this a bit more dynamic to take any function in here files = os.listdir(du_folder)
 
 
 def produce_experiment_data(chosen_df):
@@ -101,8 +103,14 @@ if __name__ == '__main__':
     then applies the extraction of features
     """
 
+    # symbol = 'RX1'
 
+
+<<<<<<< HEAD
     def produce_and_dump(files_idx_, symbol_='RX1'):
+=======
+    def produce_and_dump(files_idx_, symbol_):
+>>>>>>> e14616da7957bfc625abfbeb687d3743fe28a5d4
         symbol = symbol_  # and this
         symbol_folder_path = os.path.join(t7_folder, str(symbol))
         all_files = os.listdir(symbol_folder_path)
@@ -122,9 +130,12 @@ if __name__ == '__main__':
         print('saved:', pickle_out_returns)
 
 
+    symbol = 'RX1'  # and this
+    symbol_folder_path = os.path.join(t7_folder, str(symbol))
+    files = os.listdir(symbol_folder_path)
     pool = Pool(6)
     start_time = time.perf_counter()
-    processes = [pool.apply_async(produce_and_dump, args=(files_idx_,)) for files_idx_ in range(0, 138)]
+    processes = [pool.apply_async(produce_and_dump, args=(files_idx_,'G_1')) for files_idx_ in range(0, 136)]
     result = [p.get() for p in processes]
     finish_time = time.perf_counter()
     print(f"Program finished in {finish_time - start_time} seconds")

@@ -14,7 +14,7 @@ from datetime import timedelta
 import glob
 import fathon
 from fathon import fathonUtils as fu
-plt.style.use(os.path.join('/home/ak/.config/matplotlib','latexstyle.mplstyle'))
+#plt.style.use(os.path.join('/home/ak/.config/matplotlib','latexstyle.mplstyle'))
 import stylised_facts_data_utilities.createLOB as createLOB
 
 def open_pickle_file(path, pickle_file):
