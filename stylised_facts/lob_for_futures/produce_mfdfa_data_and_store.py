@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
 
     def all_in_calculations(symbol_file_idx_, bar_type_ ):
-        symbol_ = 'FB1_'
+        symbol_ = 'RX1_'
         symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
         print('doing index',  symbol_file_idx_)
         bars_dict_idx = read_pkl_idx(symbol_input_files_loc_, symbol_file_idx_) # output dictionary with 4

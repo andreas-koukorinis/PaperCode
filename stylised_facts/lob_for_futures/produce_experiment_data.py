@@ -3,6 +3,9 @@ import numpy as np
 import sys
 import multiprocessing
 import time
+
+sys.path.append(('/home/ak/Research/PaperCode/stylised_facts'))
+sys.path.append('/home/ak/Research/PaperCode/stylised_facts')
 import stylised_facts_data_utilities as sfd_utils
 import lob_for_futures as lobfut
 import os
@@ -20,7 +23,7 @@ pd.set_option('display.width', 1000)
 sys.path.insert(0, '/directory/tothe/handshakefile/')
 sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 ## data files
-laptop_OS_folder = '/media/ak/OS/Data/FuturesDataSemiProcessed'
+laptop_OS_folder = '/media/ak/T71/FuturesDataSemiProcessed'
 LaCie_ProcessedData = '/media/ak/LaCie/ProcessedSampledData/'
 # returns_data = '/media/ak/T7/August11th2022Experiments/Returns/'
 t7 = '/media/ak/T71/'
@@ -99,12 +102,13 @@ if __name__ == '__main__':
     """
 
 
-    def produce_and_dump(files_idx_):
-        symbol = 'FB1'  # and this
+    def produce_and_dump(files_idx_, symbol_='RX1'):
+        symbol = symbol_  # and this
         symbol_folder_path = os.path.join(t7_folder, str(symbol))
-        files = os.listdir(symbol_folder_path)
+        all_files = os.listdir(symbol_folder_path)
+        files = [f for f in all_files if str('Returns_') not in f]
 
-        choice_bar = 'dollar'  # change this
+        choice_bar = 'volume'  # change this
         date_idx = files[files_idx_].split(".")[0]
         print(date_idx)
 
@@ -115,7 +119,7 @@ if __name__ == '__main__':
         pickle_out_returns = os.path.join(experimentsLocation, "".join(
             (str(symbol) + "_" + str(choice_bar) + "_" + str(date_idx) + "_exp_df.pkl")))
         pickle.dump(exp_df, open(pickle_out_returns, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-        print('saved')
+        print('saved:', pickle_out_returns)
 
 
     pool = Pool(6)
