@@ -59,11 +59,12 @@ def chi_square_weights_H0(k, X):
     evals = -np.sort(-evals)
     weights = evals / float(n) ** 2
     return weights
-
-
-mfdfaDataFrames = '/media/ak/T71/August11th2022Experiments/mfdfaDataFrames'  # Input Files
+t7 ='/media/ak/T71'
+experimentFiles = os.path.join(t7,'August11th2022Experiments')
+mfdfaDataFrames = os.path.join(experimentFiles, 'ExperimentOne')
+# '/media/ak/T71/August11th2022Experiments/mfdfaDataFrames'  # Input Files
 LinearMMDOutputFiles = '/media/ak/T71/August11th2022Experiments/ExperimentOne/LinearMMDOutputFiles'  # Location to Save Files
-symbol = 'FB1'
+symbol = 'RX1'
 bar_choice = 'volume'
 variable = 'alpha'
 

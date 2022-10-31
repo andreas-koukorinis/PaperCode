@@ -23,7 +23,11 @@ pd.set_option('display.width', 1000)
 sys.path.insert(0, '/directory/tothe/handshakefile/')
 sys.path.append('/home/ak/Documents/PaperCode/stylised_facts')
 ## data files
+<<<<<<< HEAD
+laptop_OS_folder = '/media/ak/T71/FuturesDataSemiProcessed'
+=======
 laptop_OS_folder = '/media/ak/T7/FuturesDataSemiProcessed'
+>>>>>>> e14616da7957bfc625abfbeb687d3743fe28a5d4
 LaCie_ProcessedData = '/media/ak/LaCie/ProcessedSampledData/'
 # returns_data = '/media/ak/T7/August11th2022Experiments/Returns/'
 t7 = '/media/ak/T7/'
@@ -102,13 +106,17 @@ if __name__ == '__main__':
     # symbol = 'RX1'
 
 
+<<<<<<< HEAD
+    def produce_and_dump(files_idx_, symbol_='RX1'):
+=======
     def produce_and_dump(files_idx_, symbol_):
+>>>>>>> e14616da7957bfc625abfbeb687d3743fe28a5d4
         symbol = symbol_  # and this
         symbol_folder_path = os.path.join(t7_folder, str(symbol))
         all_files = os.listdir(symbol_folder_path)
         files = [f for f in all_files if str('Returns_') not in f]
 
-        choice_bar = 'dollar'  # change this
+        choice_bar = 'volume'  # change this
         date_idx = files[files_idx_].split(".")[0]
         print(date_idx)
 

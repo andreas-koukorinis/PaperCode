@@ -15,8 +15,8 @@ import pickle
 
 mfdfaDataFrames = '/media/ak/T71/August11th2022Experiments/mfdfaDataFrames'  # Input Files
 LinearMMDOutputFiles = '/media/ak/T71/August11th2022Experiments/ExperimentOne/LinearMMDOutputFiles'  # Location to Save Files
-symbol = 'JB1'
-bar_choice = 'volume'
+symbol = 'RX1'
+bar_choice = 'tick'
 variable = 'tau'
 
 file_name = [f for f in os.listdir(mfdfaDataFrames) if str(symbol) and str(variable) in f][0]
