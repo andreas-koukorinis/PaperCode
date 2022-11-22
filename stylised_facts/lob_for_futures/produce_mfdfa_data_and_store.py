@@ -78,8 +78,6 @@ if __name__ == '__main__':
     bar_type = 'tick'
 
     symbol_files = [f for f in os.listdir(symbol_input_files_loc) if str(bar_type) in f]
-
-
     def all_in_calculations(symbol_file_idx_, bar_type_ ):
         symbol_ = 'RX1_'
         symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
