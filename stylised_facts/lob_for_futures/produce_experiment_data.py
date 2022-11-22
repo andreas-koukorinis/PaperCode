@@ -6,7 +6,7 @@ import time
 
 sys.path.append(('/home/ak/Research/PaperCode/stylised_facts'))
 sys.path.append('/home/ak/Research/PaperCode/stylised_facts')
-import stylised_facts_data_utilities as sfd_utils
+# import stylised_facts_data_utilities as sfd_utils
 import lob_for_futures as lobfut
 import os
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         all_files = os.listdir(symbol_folder_path)
         files = [f for f in all_files if str('Returns_') not in f]
 
-        choice_bar = 'volume'  # change this
+        choice_bar = 'tick'  # change this
         date_idx = files[files_idx_].split(".")[0]
         print(date_idx)
 
@@ -122,13 +122,13 @@ if __name__ == '__main__':
         print('saved:', pickle_out_returns)
 
 
-    symbol = 'RX1'  # and this --> this symbol needs to be put in another folder as well
+    symbol = 'TY1'  # and this --> this symbol needs to be put in another folder as well
     symbol_folder_path = os.path.join(t7_folder, str(symbol))
     files = os.listdir(symbol_folder_path)
     pool = Pool(6)
     start_time = time.perf_counter()
     # on processes change this to take the input of a symbol above!
-    processes = [pool.apply_async(produce_and_dump, args=(files_idx_,'G_1')) for files_idx_ in range(0, 136)]
+    processes = [pool.apply_async(produce_and_dump, args=(files_idx_,'TY1')) for files_idx_ in range(0, 136)]
     result = [p.get() for p in processes]
     finish_time = time.perf_counter()
     print(f"Program finished in {finish_time - start_time} seconds")
