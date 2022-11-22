@@ -129,6 +129,8 @@ if __name__ == '__main__':
     start_time = time.perf_counter()
     # on processes change this to take the input of a symbol above!
     processes = [pool.apply_async(produce_and_dump, args=(files_idx_,'TY1')) for files_idx_ in range(0, 136)]
+    # can change this range if need be to complete the data easier?
+    # maybe make this a bit more modular?
     result = [p.get() for p in processes]
     finish_time = time.perf_counter()
     print(f"Program finished in {finish_time - start_time} seconds")
