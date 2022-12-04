@@ -53,7 +53,7 @@ if __name__ == '__main__':
     trades_quotes_folder = os.path.join(data1, 'TradesPurchased')
     processed_sampled_data = os.path.join(data1, 'ProcessedSampledData/')
     symbols = os.listdir(trades_quotes_folder)
-    symbol = 'STXE'
+    symbol = 'TY'
     symbol_trades_quotes_folder = os.path.join(trades_quotes_folder, symbol, 'CSV')
     symbol_files = sorted(os.listdir(symbol_trades_quotes_folder))
     write_data_folder = os.path.join(trades_quotes_folder, 'tmp')
