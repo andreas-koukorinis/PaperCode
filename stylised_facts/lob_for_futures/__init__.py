@@ -34,6 +34,9 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 dataFolder = '/media/ak/WorkDrive/Data'
+t7folder =  '/media/ak/T71'
+augExpertiments = os.path.join(t7folder, 'August11th2022Experiments')
+expInputFiles = os.path.join(augExpertiments, 'ExperimentInputFiles')
 figures_destination = '/home/ak/Documents/Research/Papers/figures/'
 
 import matplotlib as mpl
@@ -49,6 +52,8 @@ import scipy.stats as stats
 
 import xlwt
 import logging
+
+symbols = ['RX1', 'FB1', 'JB1', 'G_1', 'FV1', 'TY1', 'TU1', 'DU1', 'YM1', 'XM1', 'US1', 'OE1', 'KE1']
 
 
 def logger(name, level=logging.INFO):
