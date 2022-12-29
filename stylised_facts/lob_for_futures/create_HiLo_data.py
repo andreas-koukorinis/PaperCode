@@ -9,8 +9,9 @@ if __name__ == '__main__':
     output_data_folder = os.path.join(augExpertiments, 'HiLoData')
 
     for symbolIdx in range(0, len(symbols)):
+        print(symbols[symbolIdx])
 
-        barCh = 'volume'
+        barCh = 'dollar'
         symbolFolder = os.path.join(expInputFiles, symbols[symbolIdx])
         hi_suffix = 'Hi_Vol_Regime'
         lo_suffix = 'Lo_Vol_Regime'
