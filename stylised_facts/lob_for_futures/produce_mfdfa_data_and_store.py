@@ -44,28 +44,35 @@ def mfdfa_output(lob_df_input, bar_type_):
     raw_data = lob_df_input.pct_change_micro_price  # this is the chosen data to use
     # follows Fathon Example from here onwards
     data_input = mdf.to_agg(raw_data)
-    winSizes = fu.linRangeByStep(10, 2000)  # this needs to be more dynamic
-    qs = np.arange(-3, 4, 0.1)
-    revSeg = True
-    polOrd = 1
-    testClass = mdf.mfdfaquantities(data_input, winSizes, qs, revSeg, polOrd)
-    n, F = testClass.n_F_output()
-    list_H, list_H_intercept = testClass.H_and_H_intcpt_output()
-    tau = testClass.compute_mass_exponents()
-    alpha, mfSpect = testClass.compute_multi_fractal_spectrum()
+    try:
+        winSizes = fu.linRangeByStep(10, 2000)  # this needs to be more dynamic
+        qs = np.arange(-3, 4, 0.1)
+        revSeg = True
+        polOrd = 1
+        testClass = mdf.mfdfaquantities(data_input, winSizes, qs, revSeg, polOrd)
+        n, F = testClass.n_F_output()
+        list_H, list_H_intercept = testClass.H_and_H_intcpt_output()
+        tau = testClass.compute_mass_exponents()
+        alpha, mfSpect = testClass.compute_multi_fractal_spectrum()
 
-    mfdfa_output_dict_ = defaultdict(dict)
-    mfdfa_output_dict_[bar_type_]['n_F'] = dict(zip(n, F))
-    mfdfa_output_dict_[bar_type_]['list_H'] = list_H
-    mfdfa_output_dict_[bar_type_]['list_H_intercept'] = list_H_intercept
-    mfdfa_output_dict_[bar_type_]['tau'] = tau
-    mfdfa_output_dict_[bar_type_]['alpha'] = alpha
-    mfdfa_output_dict_[bar_type_]['mfSpect'] = mfSpect
+        mfdfa_output_dict_ = defaultdict(dict)
+        mfdfa_output_dict_['micro_price_change'] = raw_data
+        mfdfa_output_dict_['arrival_rates'] = lob_df_input.arrival_rates
+        mfdfa_output_dict_['gk_vol'] = lob_df_input.GK_vol
+        mfdfa_output_dict_['median_traded_volume'] = lob_df_input.median_traded_volume
+        mfdfa_output_dict_[bar_type_]['n_F'] = dict(zip(n, F))
+        mfdfa_output_dict_[bar_type_]['list_H'] = list_H
+        mfdfa_output_dict_[bar_type_]['list_H_intercept'] = list_H_intercept
+        mfdfa_output_dict_[bar_type_]['tau'] = tau
+        mfdfa_output_dict_[bar_type_]['alpha'] = alpha
+        mfdfa_output_dict_[bar_type_]['mfSpect'] = mfSpect
+    except ValueError:
+        pass
 
     return mfdfa_output_dict_
 
 
-experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
+experimentsLocation = '/media/ak/T7/August11th2022Experiments/'
 expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 
 if __name__ == '__main__':
@@ -85,8 +92,8 @@ if __name__ == '__main__':
 
     #
     st = time.time()
-    symbol = 'XM1'
-    bar_type = 'tick'
+    symbol = symbol_
+    bar_type = 'dollar'
     symbol_input_files_loc = os.path.join(experimentsLocation, 'ExperimentInputFiles', symbol)
     symbol_files = [f for f in os.listdir(symbol_input_files_loc) if str(bar_type) in f]
     pool = Pool(6)
@@ -94,7 +101,7 @@ if __name__ == '__main__':
     print()
     a_args = [f for f in range(0, len(symbol_files), 1)]  # length of files
     print(a_args)
-    b_args = ['tick']  # range of bars
+    b_args = ['dollar']  # range of bars
     # print(all_in_calculations(symbol_input_files_loc, 10, bar_type))
     freeze_support()
     # takes bar and file and produces the output

@@ -27,14 +27,14 @@ def write_to_csv_for_symbol(file_loc, write_data_folder):
     quotes_ddf = ddf[ddf.Type == 'Quote']
     trades_ddf = ddf[ddf.Type == 'Trade']
 
-    write_to_csv_for_dates(quotes_ddf, suffix='quotes', cols_to_drop=['Price', 'Volume', 'Type'],
+    write_to_csv_for_dates(quotes_ddf, suffix='quotes', symbol=symbol, cols_to_drop=['Price', 'Volume', 'Type'],
                            output_data_folder=write_data_folder)
-    write_to_csv_for_dates(trades_ddf, suffix='trades',
+    write_to_csv_for_dates(trades_ddf, suffix='trades',symbol =symbol,
                            cols_to_drop=['Type', 'Bid Price', 'Bid Size', 'Ask Price', 'Ask Size'],
                            output_data_folder=write_data_folder)
 
 
-def write_to_csv_for_dates(ddf, suffix, cols_to_drop, output_data_folder):
+def write_to_csv_for_dates(ddf, suffix, symbol, cols_to_drop, output_data_folder):
     ddf_dates = sorted(ddf['Date'].unique().compute())
 
     for d in ddf_dates:
