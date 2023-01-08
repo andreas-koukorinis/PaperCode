@@ -69,7 +69,7 @@ experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
 expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 
 if __name__ == '__main__':
-    symbol_ = 'XM1'
+    symbol_ = 'YM1'
     # symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
 
 
@@ -78,18 +78,18 @@ if __name__ == '__main__':
         df =(read_pkl_idx(symbol_input_files_loc, symbol_file_idx_))
         mfdfa_dict_output = mfdfa_output(df , str(bar_type))
         test_output_loc = os.path.join(expOneLocation,
-                                       str(symbol_) + str(symbol_file_idx_) + str(bar_type_) + "_mfdfa.pkl")
+                                       str(symbol_) +'_'+ str(symbol_file_idx_) + str(bar_type_) + "_mfdfa.pkl")
         pickle.dump(mfdfa_dict_output, open(test_output_loc, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
         print('saved')
         return mfdfa_dict_output
 
     #
     st = time.time()
-    symbol = 'XM1'
-    bar_type = 'tick'
+    symbol = 'YM1'
+    bar_type = 'dollar'
     symbol_input_files_loc = os.path.join(experimentsLocation, 'ExperimentInputFiles', symbol)
     symbol_files = [f for f in os.listdir(symbol_input_files_loc) if str(bar_type) in f]
-    pool = Pool(6)
+    pool = Pool(4)
     start_time = time.perf_counter()
     print()
     a_args = [f for f in range(0, len(symbol_files), 1)]  # length of files
