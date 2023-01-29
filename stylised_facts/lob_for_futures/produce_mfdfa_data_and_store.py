@@ -20,6 +20,7 @@ standard_scaler = StandardScaler()
 
 sys.path.insert(0, '/directory/tothe/handshakefile/')
 
+
 def read_pkl_idx(file_loc, file_idx):
     files = os.listdir(file_loc)
     file_idx_loc = os.path.join(file_loc, files[file_idx])
@@ -72,32 +73,27 @@ def mfdfa_output(lob_df_input, bar_type_):
     return mfdfa_output_dict_
 
 
-experimentsLocation = '/media/ak/T7/August11th2022Experiments/'
+def all_in_calculations(symbol_input_files_loc, symbol_file_idx_, bar_type_):
+    print('doing index', symbol_file_idx_)
+    df = (read_pkl_idx(symbol_input_files_loc, symbol_file_idx_))
+    mfdfa_dict_output = mfdfa_output(df, str(bar_type))
+    test_output_loc = os.path.join(expOneLocation,
+                                   str(symbol_) + '_' + str(symbol_file_idx_) + str(bar_type_) + "_mfdfa.pkl")
+    pickle.dump(mfdfa_dict_output, open(test_output_loc, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    print('saved')
+    return mfdfa_dict_output
+
+
+experimentsLocation = '/media/ak/Elements/August11th2022Experiments/'
 expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 
 if __name__ == '__main__':
-    symbol_ = 'YM1'
+    symbol_ = 'US1'
     # symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
 
-
-    def all_in_calculations(symbol_input_files_loc, symbol_file_idx_, bar_type_):
-        print('doing index', symbol_file_idx_)
-        df =(read_pkl_idx(symbol_input_files_loc, symbol_file_idx_))
-        mfdfa_dict_output = mfdfa_output(df , str(bar_type))
-        test_output_loc = os.path.join(expOneLocation,
-                                       str(symbol_) +'_'+ str(symbol_file_idx_) + str(bar_type_) + "_mfdfa.pkl")
-        pickle.dump(mfdfa_dict_output, open(test_output_loc, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-        print('saved')
-        return mfdfa_dict_output
-
-    #
     st = time.time()
-<<<<<<< HEAD
     symbol = symbol_
-=======
-    symbol = 'YM1'
->>>>>>> 7e495f69c80a7c7dee7edc715787672558a36581
-    bar_type = 'dollar'
+    bar_type = 'volume'
     symbol_input_files_loc = os.path.join(experimentsLocation, 'ExperimentInputFiles', symbol)
     symbol_files = [f for f in os.listdir(symbol_input_files_loc) if str(bar_type) in f]
     pool = Pool(4)
@@ -105,7 +101,7 @@ if __name__ == '__main__':
     print()
     a_args = [f for f in range(0, len(symbol_files), 1)]  # length of files
     print(a_args)
-    b_args = ['dollar']  # range of bars
+    b_args = ['volume']  # range of bars
     # print(all_in_calculations(symbol_input_files_loc, 10, bar_type))
     freeze_support()
     # takes bar and file and produces the output
