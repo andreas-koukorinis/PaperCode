@@ -88,12 +88,12 @@ experimentsLocation = '/media/ak/Elements/August11th2022Experiments/'
 expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 
 if __name__ == '__main__':
-    symbol_ = 'US1'
+    symbol_ = 'FB1'
     # symbol_input_files_loc_ = os.path.join(experimentsLocation, 'ExperimentInputFiles')
 
     st = time.time()
     symbol = symbol_
-    bar_type = 'volume'
+    bar_type = 'tick'
     symbol_input_files_loc = os.path.join(experimentsLocation, 'ExperimentInputFiles', symbol)
     symbol_files = [f for f in os.listdir(symbol_input_files_loc) if str(bar_type) in f]
     pool = Pool(4)
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     print()
     a_args = [f for f in range(0, len(symbol_files), 1)]  # length of files
     print(a_args)
-    b_args = ['volume']  # range of bars
+    b_args = ['tick']  # range of bars
     # print(all_in_calculations(symbol_input_files_loc, 10, bar_type))
     freeze_support()
     # takes bar and file and produces the output
