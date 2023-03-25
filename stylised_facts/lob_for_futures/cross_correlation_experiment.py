@@ -42,7 +42,9 @@ HiLoData = os.path.join(lobFut.augExpertiments, 'HiLoData')
 plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle3.mplstyle'))
 symbols = ['RX1', 'FB1', 'JB1', 'G_1', 'FV1', 'TY1', 'TU1', 'DU1', 'YM1', 'XM1', 'US1', 'OE1', 'KE1']
 
+# lapAugust11th2022Experiments
 # laptop data folder
+t7DataFolder = os.path.join(t7folder, 'August11th2022Experiments/ExperimentOne/' )
 laptopDataFolder = os.path.join('/media/ak/OS', 'Data')
 expFiles = os.path.join(laptopDataFolder, 'August11th2022Experiments')
 
@@ -182,24 +184,26 @@ class CrossCorrel():
 
 
 if __name__ == '__main__':
-    symbols = ['RX1', 'FB1', 'JB1', 'G_1', 'FV1', 'TY1', 'TU1', 'DU1', 'YM1', 'XM1', 'US1', 'OE1', 'KE1']
+    #symbols = ['RX1', 'FB1', 'JB1', 'G_1', 'FV1', 'TY1', 'TU1', 'DU1', 'YM1', 'XM1', 'US1', 'OE1', 'KE1']
+    symbols = sorted(['FB1', 'JB1', 'XM1', 'TY1', 'TU1', 'RX1', 'YM1', 'US1', 'DU1']) # symbols for T71 USB Drive
     winSizes = fu.linRangeByStep(10, 1000, step=20)
-    polOrd = 1
+    polOrd = 2
     import time
 
     micro_variables = ['arrival_rates', 'gk_vol', 'median_traded_volume', 'micro_price_change']
     # self, path, symbols, idx, bar, use_var
-    symbolsIdx = 5
+    symbolsIdx = 6
     bar = 'volume'
-    cc2 = CrossCorrel(laptopDataFolder, symbols, symbolsIdx, str(bar))
+    cc2 = CrossCorrel(t7DataFolder, symbols, symbolsIdx, str(bar))
     files, filesPath = cc2.get_data_and_path()
-    range_to_use = range(0, 100)
+    print(filesPath)
+    print(len(os.listdir(filesPath)))
+    range_to_use = range(0, 51)
     arrivals_list = {f: cc2.get_microvar_data(fileIdx=f, var='arrival_rates') for f in range_to_use}
     median_volumes_list = {f: cc2.get_microvar_data(fileIdx=f, var='median_traded_volume') for f in range_to_use}
     arrivalsDF = pd.DataFrame(arrivals_list).fillna(0)
     medianVolumesDF = pd.DataFrame(median_volumes_list).fillna(0)
-
-
+    #
     def fn_for_rho(idx):
         rhoDict = dict()
         n = []
@@ -224,6 +228,7 @@ if __name__ == '__main__':
     tic = time.perf_counter()
     # fn_for_rho(1)
     with Pool(5) as p:
-        print(p.map(fn_for_H_H_dcca, [f for f in range(0, 20)]))
+       # print(p.map(fn_for_H_H_dcca, [f for f in range(0, 40)]))
+        print(p.map(fn_for_rho, [f for f in range(0, 20)]))
     toc = time.perf_counter()
     print("elapsed time:", (toc - tic))
