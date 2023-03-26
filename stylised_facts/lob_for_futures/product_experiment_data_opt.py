@@ -176,8 +176,8 @@ def main(symbols, bar_types, experimentsLocation, expOneLocation):
 
 
 if __name__ == '__main__':
-    symbols_list = ['JB1', 'DU1']  # Add more symbols to the list if needed
-    bar_types_list = ['tick', 'calendar', 'dollar', 'volume']  # Add more bar types to the list if needed
+    symbols_list = ['FV1']  # Add more symbols to the list if needed
+    bar_types_list = ['dollar']  # Add more bar types to the list if needed
     experimentsLocation = '/media/ak/T71/August11th2022Experiments'
     expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
     main(symbols_list, bar_types_list, experimentsLocation, expOneLocation)
