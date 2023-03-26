@@ -305,7 +305,9 @@ def main_cross_correl(base_path: str, symbols_list: List[str], idx: int, bar_cho
         output_path = os.path.join(base_path, "outputs")
         os.makedirs(output_path, exist_ok=True)
         output_filename = f"{symbols_list[idx]}_{bar_choice}_{fileIdx}_output.json"
+
         output_filepath = os.path.join(output_path, output_filename)
+        print(output_filepath)
 
         output_data = {
             "n": n.tolist(),
@@ -328,7 +330,7 @@ if __name__ == "__main__":
     base_path = "/media/ak/Data1/ExperimentData/August11th2022Experiments/ExperimentInputFiles"
     # Define the path     to     the     data and the     list     of     symbols.
     symbols_list = ["G_1"]
-    bar_choice = "tick"  # Replace with your choice of bar (e.g., 'tick', 'volume', 'dollar').
+    bar_choice = "dollar"  # Replace with your choice of bar (e.g., 'tick', 'volume', 'dollar').
     idx = 0
     mvp = MicroVariableProcessor(base_path, symbols_list[idx], bar_choice)
 
@@ -338,6 +340,6 @@ if __name__ == "__main__":
         pool.starmap(main_cross_correl, [(base_path, symbols_list, idx, bar_choice,
                                           mvp.get_output(fileIdx)["micro_price"], mvp.get_output(fileIdx)["gk_vol"],
                                           fileIdx) for
-                                         fileIdx in range(0, 134)])
+                                         fileIdx in range(0, 14)])
     toc = time.perf_counter()
     print("elapsed time:", (toc - tic))
