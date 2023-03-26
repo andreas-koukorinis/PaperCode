@@ -4,7 +4,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from fathon import fathonUtils as utils
-from fathon import fathon
+import fathon
 from multiprocessing import Pool
 from scipy.stats import linregress
 data_folder = 'path/to/data/folder'
