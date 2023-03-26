@@ -40,6 +40,7 @@ def plot_median_with_std(dataframe, output_dir, output_filename, xlabel, ylabel,
     # Show the plot
     plt.show()
 
+
 def plot_median(dataframe, output_dir, output_filename, xlabel, ylabel, title):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -65,7 +66,7 @@ def plot_median(dataframe, output_dir, output_filename, xlabel, ylabel, title):
     plt.legend(["Median"])
 
     # Save the plot to the specified directory
-#     plt.savefig(os.path.join(output_dir, output_filename), dpi=300)
+    #     plt.savefig(os.path.join(output_dir, output_filename), dpi=300)
 
     # Show the plot
     plt.show()
