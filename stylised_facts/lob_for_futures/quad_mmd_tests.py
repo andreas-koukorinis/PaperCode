@@ -13,8 +13,8 @@ import os
 import pandas as pd
 import pickle
 import itertools
-mfdfaDataFrames = '/media/ak/T7/August11th2022Experiments/mfdfaDataFrames'  # Input Files
-LinearMMDOutputFiles = '/media/ak/T7/August11th2022Experiments/ExperimentOne/TestMMDOutputFiles'  # Location to Save Files
+mfdfaDataFrames = '/media/ak/T71/August11th2022Experiments/mfdfaDataFrames'  # Input Files
+LinearMMDOutputFiles = '/media/ak/T71/August11th2022Experiments/ExperimentOne/TestMMDOutputFiles'  # Location to Save Files
 
 
 def simulate_null_spectral(weights, n_simulate=1000, seed=275):

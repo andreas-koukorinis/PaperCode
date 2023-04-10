@@ -13,10 +13,10 @@ import os
 import pandas as pd
 import pickle
 
-mfdfaDataFrames = '/media/ak/T7/August11th2022Experiments/mfdfaDataFrames'  # Input Files
-LinearMMDOutputFiles = '/media/ak/T7/August11th2022Experiments/ExperimentOne/TestMMDOutputFiles'  # Location to Save Files
+mfdfaDataFrames = '/media/ak/T71/August11th2022Experiments/mfdfaDataFrames'  # Input Files
+LinearMMDOutputFiles = '/media/ak/T71/August11th2022Experiments/ExperimentOne/TestMMDOutputFiles'  # Location to Save Files
 
-symbol = 'US1'
+symbol = 'FB1'
 symbol_mfdfa_Frames_loc = os.path.join(mfdfaDataFrames, symbol)
 bar_choice = 'dollar'
 variable = 'mfSpect'
