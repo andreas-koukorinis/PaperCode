@@ -30,6 +30,8 @@ expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
 def read_pkl_idx(file_loc, file_idx):
     """
     Reads a pickle file based on the given file location and index.
+    This function reads a pickle file based on the given file location and index.
+    It can be used to read a specific pickle file containing financial data for further analysis.
 
     :param file_loc: str, file location containing the pickle files
     :param file_idx: int, index of the file to read
@@ -176,8 +178,8 @@ def main(symbols, bar_types, experimentsLocation, expOneLocation):
 
 
 if __name__ == '__main__':
-    symbols_list = ['RX1']  # Add more symbols to the list if needed
-    bar_types_list = ['tick']  # Add more bar types to the list if needed
+    symbols_list = ['OE1']  # Add more symbols to the list if needed
+    bar_types_list = ['dollar', 'volume', 'tick']  # Add more bar types to the list if needed
     experimentsLocation = '/media/ak/T71/August11th2022Experiments'
     expOneLocation = os.path.join(experimentsLocation, 'ExperimentOne')
     main(symbols_list, bar_types_list, experimentsLocation, expOneLocation)

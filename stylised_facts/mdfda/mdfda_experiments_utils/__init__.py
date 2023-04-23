@@ -5,18 +5,20 @@ import numpy as np
 import os
 
 # LOCATIONS
-laptop_OS_folder = '/media/ak/OS/Data/FuturesDataSemiProcessed'
-LaCie_ProcessedData = '/media/ak/LaCie/ProcessedSampledData/'
-# returns_data = '/media/ak/T7/August11th2022Experiments/Returns/'
+# laptop_OS_folder = '/media/ak/OS/Data/FuturesDataSemiProcessed'
+# LaCie_ProcessedData = '/media/ak/LaCie/ProcessedSampledData/'
+# # returns_data = '/media/ak/T7/August11th2022Experiments/Returns/'
 t7 = '/media/ak/T7/'
 # june_ext = os.path.join(t7, 'June4th2022Experiments')
 # returns_data = [f for f in os.listdir(june_ext) if '_returns' in f]
-experimentsLocation = '/media/ak/T71/August11th2022Experiments/'
+mainFolder = '/media/ak/T71/August11th2022Experiments/'
+experimentsLocation = os.path.join(mainFolder, 'ExperimentInputFiles')
 bars = ['tick', 'volume', 'calendar', 'dollar']
 
 
-def read_exp_data(symbol_files_, file_idx_):
-    file_idx_loc_ = os.path.join(experimentsLocation, symbol_files_[file_idx_])
+def read_exp_data(symbol_Path, bar, file_idx_):
+    symbol_files_ = [f for f in os.listdir(symbol_Path) if str(bar) in f]
+    file_idx_loc_ = os.path.join(symbol_Path, symbol_files_[file_idx_])
     df_idx_ = pd.read_pickle(file_idx_loc_)
     return df_idx_
 
@@ -91,16 +93,16 @@ class mfdfaquantities(object):
 if __name__ == '__main__':
     symbol = 'JB1'
     bar = 'tick'
-
-    symbol_files = [f for f in os.listdir(experimentsLocation) if str(symbol + '_' + bar) in f]
+    symbolPath = os.path.join(experimentsLocation, symbol)
     symbol_file_idx = 100
 
-    exp_df_idx = read_exp_data(symbol_files, symbol_file_idx)  # experiment df indexed
+    exp_df_idx = read_exp_data(symbolPath, bar,  symbol_file_idx)  # experiment df indexed
     data_input = to_agg(exp_df_idx.pct_change_micro_price)
+    print(data_input)
     winSizes_ = fu.linRangeByStep(10, win_Sizes_len(data_input))  # rounding length of t to the nearest 100
 
     qs = np.arange(-3, 4, 0.1)
     revSeg = True
     polOrd = 1
-    testClassOne = MfdfaQuantities(data_input, winSizes_, qs, revSeg, polOrd)
+    testClassOne = mfdfaquantities(data_input, winSizes_, qs, revSeg, polOrd)
     print(testClassOne.compute_mass_exponents())
