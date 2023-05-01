@@ -8,98 +8,35 @@ import freqopttest.tst as tst
 import collections
 from collections import defaultdict
 import freqopttest.glo as glo
-from pathlib import Path
 import sys
-import concurrent.futures
-import hashlib
 import time
 import os
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
 import pickle
+from itertools import combinations
+import itertools
+from multiprocessing import Pool, cpu_count
 
 
-### functions
+# functions:
 
-def save_results_to_file(test_results_one_dict, test_results_two_dict, shift, window, output_dir):
-    os.makedirs(output_dir, exist_ok=True)
+def generate_column_pairs(num_columns):
+    """
+    Generates pairs of columns for sliding window analysis.
 
-    test_results_one_file = os.path.join(output_dir, f"test_results_one_shift_{shift}_window_{window}.pkl")
-    test_results_two_file = os.path.join(output_dir, f"test_results_two_shift_{shift}_window_{window}.pkl")
+    Args:
+        num_columns (int): The total number of columns.
 
-    with open(test_results_one_file, 'wb') as f:
-        pickle.dump(test_results_one_dict, f)
-
-    with open(test_results_two_file, 'wb') as f:
-        pickle.dump(test_results_two_dict, f)
-
-
-def load_results(output_dir):
-    results_files = [f for f in os.listdir(output_dir) if f.endswith('.csv')]
-
-    results = []
-    for file in results_files:
-        filepath = os.path.join(output_dir, file)
-        df = pd.read_csv(filepath)
-        df['filename'] = file
-        results.append(df)
-
-    return pd.concat(results, ignore_index=True)
-
-
-def generate_latex_summary_table(dataframe):
-    latex_table = dataframe.to_latex(index=False)
-    return latex_table
-
-
-def analyze_and_save(shift, window, analyzer, output_dir):
-    try:
-        test_results_one_dict, test_results_two_dict = analyzer.analyze(shift=shift, window=window)
-        save_results_to_file(test_results_one_dict, test_results_two_dict, shift, window, output_dir)
-    except ValueError as e:
-        print(f"Error occurred during analyze for shift {shift} and window {window}:", e)
-
-
-def load_and_concatenate_results_csv(output_dir):
-    output_dir = Path(output_dir)
-    csv_files = sorted(output_dir.glob("*.csv"))
-    dfs = []
-    for csv_file in csv_files:
-        df = pd.read_csv(csv_file)
-        dfs.append(df)
-    concatenated_df = pd.concat(dfs, axis=0)
-    return concatenated_df
-
-
-def load_and_concatenate_results(output_dir):
-    output_dir = Path(output_dir)
-    pkl_files = sorted(output_dir.glob("*.pkl"))
-    dfs = []
-    for pkl_file in pkl_files:
-        with open(pkl_file, 'rb') as f:
-            df = pickle.load(f)
-        if isinstance(df, pd.DataFrame):
-            dfs.append(df)
-    concatenated_df = pd.concat(dfs, axis=0)
-    return concatenated_df
-
-
-def load_and_concatenate_results_default_dict(output_dir):
-    output_dir = Path(output_dir)
-    pkl_files = sorted(output_dir.glob("*.pkl"))
-    dfs = []
-    for pkl_file in pkl_files:
-        with open(pkl_file, 'rb') as f:
-            results_dict = pickle.load(f)
-        for key in results_dict:
-            if isinstance(key, int):
-                key = (key,)
-            results_dict[key]["shift"] = key[0]
-            results_dict[key]["window"] = key[1]
-        df = pd.DataFrame.from_dict(results_dict, orient="index")
-        dfs.append(df)
-    concatenated_df = pd.concat(dfs, axis=0)
-    return concatenated_df
+    Yields:
+        tuple: A tuple containing the start index, end index, and shift for a pair of columns.
+               The start and end indices define the column pair, and the shift indicates the distance
+               by which one column is shifted with respect to the other.
+    """
+    for window in range(1, num_columns):
+        for shift in range(1, num_columns - window + 1):
+            for start_point, end_point in itertools.combinations(range(num_columns), 2):
+                if end_point - start_point == window:
+                    yield start_point, end_point, shift
 
 
 def create_kgauss(sigma2, default_sigma2=None):
@@ -120,301 +57,157 @@ def create_kgauss(sigma2, default_sigma2=None):
         raise ValueError("Both sigma2 and default_sigma2 are invalid. Please provide a positive value for either.")
 
 
-class LinearMMDAnalyzer:
-    """
-    A class to analyze Linear MMD tests on symbol data and save the results.
-    """
+class MMDTester:
+    def __init__(self, df):
+        self.df = df
 
-    def __init__(self, symbol='XM1', mfdfaDataFrames='', LinearMMDOutputFiles='', bar_choice='dollar',
-                 variable='mfSpect'):
-        """
-        Initialize the LinearMMDAnalyzer with symbol, input, and output paths.
+    def get_data(self, start_point, end_point, shift, window):
+        min_length = min(self.df.iloc[:, start_point:end_point].shape[0],
+                         self.df.iloc[:, end_point + shift:end_point + 2 * shift].shape[0],
+                         self.df.iloc[:, start_point + window:end_point + window].shape[0])
 
-        :param symbol: str, the symbol to analyze.
-        :param mfdfaDataFrames: str, the base directory containing the symbol data.
-        :param LinearMMDOutputFiles: str, the base directory where the output files will be saved.
-        :param bar_choice: str, the bar choice to process (e.g., 'dollar').
-        :param variable: str, the variable to analyze.
-        """
-        self.symbol = symbol
-        self.mfdfaDataFrames = mfdfaDataFrames
-        self.LinearMMDOutputFiles = LinearMMDOutputFiles
-        self.symbol_mfdfa_Frames_loc = os.path.join(self.mfdfaDataFrames, self.symbol)
-        self.bar_choice = bar_choice
-        self.variable = variable
-        self.symbol_mfdfa_Frames_results_bar_choice = os.path.join(self.symbol_mfdfa_Frames_loc, 'results',
-                                                                   self.bar_choice)
+        X = np.array(self.df.iloc[:min_length, start_point:end_point])
+        Y = np.array(self.df.iloc[:min_length, end_point + shift:end_point + 2 * shift])
+        Z = np.array(self.df.iloc[:min_length, start_point + window:end_point + window])
 
-    def get_var_files(self):
-        return [f for f in os.listdir(self.symbol_mfdfa_Frames_results_bar_choice) if str(self.variable) in f]
+        return X, Y, Z
 
-    def get_unpickled_file(self):
-        """
-        the unpickled file containing the symbol/variable data.
-            :return: probably default dict.
-        """
-        for file in list(self.get_var_files()):
-            return pd.read_pickle(os.path.join(self.symbol_mfdfa_Frames_results_bar_choice, file))
+    def perform_tests(self, X, Y, Z):
+        data_sample = data.TSTData(X, Y)
+        test_data_one = data.TSTData(X, Z)
+        test_data_two = data.TSTData(Y, Z)
 
-    def get_unpickled_dataframe(self):
-        """
-        Get the unpickled DataFrame containing the symbol data.
+        tr, te = data_sample.split_tr_te(tr_proportion=0.9, seed=100)
 
-        :return: DataFrame, the unpickled DataFrame.
-        """
-        files_list_bar_choice = (f for f in os.listdir(self.symbol_mfdfa_Frames_loc) if
-                                 self.variable in f and self.bar_choice in f)
+        med = util.meddistance(tr.stack_xy())
+        widths = [(med * f) for f in 2.0 ** np.linspace(0, 4, 25)]
+        try:
 
-        for file_name in files_list_bar_choice:
-            file_loc = os.path.join(self.symbol_mfdfa_Frames_loc, file_name)
-            unpickled_data = pd.read_pickle(file_loc)
+            list_kernels = [kernel.KGauss(w ** 2) for w in widths]
+            print('using these',list_kernels)
+        except AssertionError:
+            print('setting sigma2 =1 as sigma2 > 0, must be > 0')
+            list_kernels = [create_kgauss(w ** 2, default_sigma2=1) for w in widths]
 
-            if isinstance(unpickled_data, pd.DataFrame):
-                return unpickled_data
-            elif isinstance(unpickled_data, dict) and self.bar_choice in unpickled_data:
-                return unpickled_data[self.bar_choice]
+        besti, powers = tst.LinearMMDTest.grid_search_kernel(tr, list_kernels, alpha=0.01)
 
-        raise ValueError(
-            f"No suitable file found containing both variable '{self.variable}' and bar_choice '{self.bar_choice}'.")
+        plt.plot(widths, powers, 'o-')
+        plt.xlabel('Gaussian width')
+        plt.ylabel('test power')
+        plt.title('median distance = %.3g. Best width: %.3g' % (med, widths[besti]))
+        plt.show()
 
-    def analyze(self, shift=1, window=5, kgauss_instance=None):
-        """
-        Perform the Linear MMD analysis on the symbol data and return the results.
+        best_ker = list_kernels[besti]
+        lin_mmd_test = tst.LinearMMDTest(best_ker, alpha=0.01)
 
-        :param shift: int, the shift parameter for the analysis.
-        :param window: int, the window parameter for the analysis.
-        :param kgauss_instance: KGauss, an optional instance of the KGauss class to use for the kernel.
-        :return: tuple, a tuple containing the test results dictionaries.
-        """
-        unpickled_Df = self.get_unpickled_file()
-        length = unpickled_Df.shape[1]
-        test_results_one_dict = defaultdict(dict)
-        test_results_two_dict = defaultdict(dict)
-        for start_point in range(0, (length - window - shift)):
-            end_point = start_point + shift
-            X = np.array(unpickled_Df.iloc[:, start_point:end_point])
-            Y = np.array(unpickled_Df.iloc[:, end_point + shift:end_point + 2 * shift])
-            Z = np.array(unpickled_Df.iloc[:, start_point + window:end_point + window])
+        test_results_one = {
+            'widths': widths,
+            'med': med,
+            'besti': besti,
+            'powers': powers,
+            'med_on_test_data': util.meddistance(test_data_one.stack_xy()),
+            'test_result': lin_mmd_test.perform_test(test_data_one),
+            'test_variance': lin_mmd_test.variance(X, Z, best_ker),
+            'two_moments': lin_mmd_test.two_moments(X, Z, best_ker),
+            'compute_unbiased_linear_estimator': lin_mmd_test.compute_stat(test_data_one)
+        }
 
-            data_sample = data.TSTData(X, Y)  # data to train the model
-            test_data_one = data_sample = data.TSTData(X, Z)
-            test_data_two = data_sample = data.TSTData(Y, Z)
+        test_results_two = {
+            'test_result': lin_mmd_test.perform_test(test_data_two),
+            'test_variance': lin_mmd_test.variance(Y, Z, best_ker),
+            'med_on_test_data': util.meddistance(test_data_two.stack_xy()),
+            'two_moments': lin_mmd_test.two_moments(Y, Z, best_ker),
+            'compute_unbiased_linear_estimator': lin_mmd_test.compute_stat(test_data_two)
+        }
 
-            tr, te = data_sample.split_tr_te(tr_proportion=0.9, seed=100)
+        return test_results_one, test_results_two
 
-            # choose the best kernel that maximizes the test power
-            med = util.meddistance(tr.stack_xy())
-            widths = [(med * f) for f in 2.0 ** np.linspace(-1, 4, 25)]
+    def analyze(self, start_point, end_point, shift, window):
+        X, Y, Z = self.get_data(start_point, end_point, shift, window)
+        return self.perform_tests(X, Y, Z)
 
-            if kgauss_instance is None:
 
-                list_kernels = [create_kgauss(w ** 2, default_sigma2=1) for w in widths]
-
-            else:
-                list_kernels = [kgauss_instance for _ in range(len(widths))]
-
-            besti, powers = tst.LinearMMDTest.grid_search_kernel(tr, list_kernels, alpha=0.01)
-
-            # The actual test
-            best_ker = list_kernels[besti]
-            lin_mmd_test = tst.LinearMMDTest(best_ker, alpha=0.01)
-
-            # Test 1 Results Dict
-            test_results_one_dict[start_point]['widths'] = widths
-            test_results_one_dict[start_point]['med'] = med
-            test_results_one_dict[start_point]['widths'] = widths
-            test_results_one_dict[start_point]['besti'] = besti
-            test_results_one_dict[start_point]['powers'] = powers
-
-            test_results_one_dict[start_point]['med_on_test_data'] = util.meddistance(test_data_one.stack_xy())
-            test_results_one_dict[start_point]['test_result'] = lin_mmd_test.perform_test(test_data_one)
-            test_results_one_dict[start_point]['test_variance'] = lin_mmd_test.variance(X, Z, best_ker)  # test variance
-            test_results_one_dict[start_point]['two_moments'] = lin_mmd_test.two_moments(X, Z,
-                                                                                         best_ker)  # test variance
-            test_results_one_dict[start_point]['compute_unbiased_linear_estimator'] = lin_mmd_test.compute_stat(
-                test_data_one)
-
-            # Test 2 Results Dict
-            test_results_two_dict[start_point]['test_result'] = lin_mmd_test.perform_test(test_data_two)
-            test_results_two_dict[start_point]['test_variance'] = lin_mmd_test.variance(Y, Z, best_ker)
-            test_results_two_dict[start_point]['med_on_test_data'] = util.meddistance(
-                test_data_two.stack_xy())  # test variance
-            test_results_two_dict[start_point]['two_moments'] = lin_mmd_test.two_moments(Y, Z,
-                                                                                         best_ker)  # test variance
-            test_results_two_dict[start_point]['compute_unbiased_linear_estimator'] = lin_mmd_test.compute_stat(
-                test_data_two)
-
-        return test_results_one_dict, test_results_two_dict
-
-    def analyze_adaptive(self, kgauss_instance=None):
-        unpickled_Df = self.get_unpickled_file()
-        num_shifts = int(unpickled_Df.shape[1] / 10)
-        num_windows = int(unpickled_Df.shape[1] / 20)
-
-        test_results_dicts = {}
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_pair = {}
-            for shift in range(1, num_shifts + 1):
-                for window in range(1, num_windows + 1):
-                    future = executor.submit(self.analyze, shift, window, kgauss_instance)
-                    future_to_pair[future] = (shift, window)
-
-            for future in concurrent.futures.as_completed(future_to_pair):
-                shift, window = future_to_pair[future]
-                try:
-                    test_results_one_dict, test_results_two_dict = future.result()
-                    #self.save_results(test_results_one_dict, test_results_two_dict, shift, window)
-                    test_results_dicts[(shift, window)] = (test_results_one_dict, test_results_two_dict)
-                except ValueError:
-                    # Handle the error here, e.g. by skipping this pair or applying some other fallback option
-                    pass
-
-        return test_results_dicts
-
-    def analyze_adaptive_two(self):
-        """
-        Perform the Linear MMD analysis on the symbol data with adaptive shifts and windows.
-
-        :return: dict, a dictionary containing the test results dictionaries keyed by (shift, window).
-        """
-        unpickled_Df = self.get_unpickled_file()
-        length = unpickled_Df.shape[1]
-        num_shifts = int(length / 3)
-        num_windows = int(length / 5)
-
-        shifts_windows = [(shift, window) for shift in range(1, num_shifts + 1) for window in range(1, num_windows + 1)]
-
-        test_results_dicts = {}
-
-        for shift, window in shifts_windows:
-            try:
-                test_results_one_dict, test_results_two_dict = self.analyze(shift=shift, window=window)
-                self.save_results(test_results_one_dict, test_results_two_dict, shift, window)
-                test_results_dicts[(shift, window)] = (test_results_one_dict, test_results_two_dict)
-            except ValueError:
-                # Handle the error here, e.g. by skipping this pair or applying some other fallback option
-                pass
-
-        self.test_results_dicts = test_results_dicts
-
-        # Create a unique filename based on the shifts_windows parameter
-        hash_str = str(shifts_windows).encode('utf-8')
-        file_hash = hashlib.sha256(hash_str).hexdigest()[:16]
-        filename = str(self.symbol) + "_" + str(self.bar_choice) + '_' + str(self.variable) + '_' + file_hash + ".pkl"
-        # Save the test_results_dicts to a pickle file
-        with open(os.path.join(self.LinearMMDOutputFiles, filename), "wb") as f:
-            pickle.dump(test_results_dicts, f)
-        print(os.path.join(self.LinearMMDOutputFiles, filename))
-
-        return test_results_dicts
-
-    def analyze_multiple_variables(self, variables, shift=1, window=5):
-        """
-        Perform the Linear MMD analysis on multiple variables and return the results.
-
-        :param variables: list, a list of variables to analyze.
-        :param shift: int, the shift parameter for the analysis.
-        :param window: int, the window parameter for the analysis.
-        :return: list, a list of dictionaries containing the test results for each variable.
-        """
-        results_list = []
-
-        for variable in variables:
-            self.variable = variable
-            test_results_one_dict, test_results_two_dict = self.analyze(shift=shift, window=window)
-            results_dict = {
-                'variable': variable,
-                'test_results_one_dict': test_results_one_dict,
-                'test_results_two_dict': test_results_two_dict
-            }
-            results_list.append(results_dict)
-
-        return results_list
-
-    def save_results(self, test_results_one_dict, test_results_two_dict, shift, window):
-        """
-        Save the test results to pickle files.
-
-        :param test_results_one_dict: dict, the first test results dictionary.
-        :param test_results_two_dict: dict, the second test results dictionary.
-        :param shift: int, the shift parameter for the analysis.
-        :param window: int, the window parameter for the analysis.
-        """
-        pickle_out_dict_one = os.path.join(self.LinearMMDOutputFiles, "".join(
-            (str(self.symbol) + "_" + str(self.bar_choice) + '_' + str(self.variable) + "_shift_" + str(
-                shift) + "_wind_" + str(window) + "_" + str(
-                'linear_test') + "_ONE.pkl")))
-        pickle.dump(test_results_one_dict, open(pickle_out_dict_one, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
-
-        pickle_out_dict_two = os.path.join(self.LinearMMDOutputFiles, "".join(
-            (str(self.symbol) + "_" + str(self.bar_choice) + '_' + str(self.variable) + "_shift_" + str(
-                shift) + "_wind_" + str(window) + "_" + str(
-                'linear_test') + "_TWO.pkl")))
-        pickle.dump(test_results_two_dict, open(pickle_out_dict_two, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+def analyze_column(mmd_tester, unpickled_df, start_point, end_point, shift, window):
+    try:
+        test_results_one, test_results_two = mmd_tester.analyze(start_point, end_point, shift, window)
+        col1, col2 = unpickled_df.columns[start_point], unpickled_df.columns[end_point + shift]
+        result_key = f"{col1} vs {col2}, window={window}, shift={shift}"
+        return {result_key: (test_results_one, test_results_two)}
+    except ValueError:
+        pass
 
 
 if __name__ == '__main__':
-    experimentOne = '/media/ak/T71/August11th2022Experiments/experimentOne'
-    mfdfaDataFrames = '/media/ak/T71/August11th2022Experiments/mfdfaDataFrames'
-    symbols = sorted([f for f in os.listdir('/media/ak/T71/August11th2022Experiments/ExperimentOne') if str('Linear') not in f])
-    # symbols =['FV1']
-    # ----uncomment below for single symbol
-    symbol = 'KE1'
-    symbolPath = os.path.join(mfdfaDataFrames, symbol)
+    # need to load a dataframe here
+    symbol = 'G_1'
+    LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
+    bar_choice = 'volume'
+    file = os.path.join(LinearMMDInputFiles,
+                        [f for f in os.listdir(LinearMMDInputFiles) if (str(symbol) and str(bar_choice)) in f][0])
+    outputDir = '/media/ak/T7/August11th2022Experiments/LinearMMDOutputFiles'
+    variables = ['n_F', 'list_H', 'list_H_intercept', 'tau', 'alpha', 'mfSpect']
+    data_dict = pd.read_pickle(file)
 
-    bar_choice = 'volume'    # bar choice needs to be sorted out for single or multiple variables
-    variable = 'alpha'
-    print(symbolPath, os.path.isdir(symbolPath))
+    # Create a list of DataFrames with names from the dictionary keys
+    dataframes = [pd.DataFrame(data_dict[key]).assign(name=key) for key in data_dict]
 
-    symbol_barChoicePath = os.path.join(symbolPath, 'results', bar_choice)
-    print(symbol_barChoicePath)
+    n_f = data_dict['n_F']
+    list_H = data_dict['list_H']
+    tau_df = pd.DataFrame.from_dict(data_dict['tau'])
+    alpha_df = pd.DataFrame.from_dict(data_dict['alpha'])
 
-    files = [f for f in os.listdir(symbol_barChoicePath) if str(bar_choice) in f]
-    # ---- uncomment above for single symbol
-    variables = ['tau', 'alpha', 'mfSpect']
-      #['n_F', 'list_H', 'list_H_intercept', 'tau', 'alpha', 'mfSpect']
+    ### this is the processing code!
+    unpickled_dataframe = alpha_df
+    output_name = "_".join((str(symbol), str(bar_choice), 'processedLinearMMDresults', 'alpha.csv'))
+    num_columns = unpickled_dataframe.shape[1]
 
-    LinearMMDOutputFiles = os.path.join(experimentOne, 'LinearMMDOutputFiles')
-    if not os.path.exists(LinearMMDOutputFiles):
-        os.makedirs(LinearMMDOutputFiles)
-
-    # uncomment below for single symbol
-
-    # # Analyze the symbol data with adaptive shifts and windows
-
-    analyzer = LinearMMDAnalyzer(symbol=symbol, mfdfaDataFrames=mfdfaDataFrames,
-                                 LinearMMDOutputFiles=LinearMMDOutputFiles,
-                                 bar_choice=bar_choice, variable=variable)
-    gaussian_kernel = create_kgauss(sigma2=-1, default_sigma2=1)
-    analyzer.analyze(kgauss_instance=gaussian_kernel)
-    test_results_dicts = analyzer.analyze_adaptive()
-    print(test_results_dicts)
+    # Define MMDTester object
+    mmd_tester = MMDTester(unpickled_dataframe)
 
 
-    # --- uncomment below for multi-symbols
-#
-# #
-#     for symbol in symbols:
-#         symbolPath = os.path.join(mfdfaDataFrames, symbol)
-#         if not os.path.isdir(symbolPath):
-#             print(symbolPath, 'not a path')
-#             continue
-#         symbol_barChoicePath = os.path.join(symbolPath, 'results', bar_choice)
-#         if not os.path.exists(symbol_barChoicePath):
-#             print(symbol_barChoicePath, 'not a path')
-#             continue
-#         for variable in variables:
-#             print(f"Analyzing {symbol}/{variable}")
-#             analyzer = LinearMMDAnalyzer(symbol=symbol, mfdfaDataFrames=mfdfaDataFrames,
-#                                          LinearMMDOutputFiles=LinearMMDOutputFiles,
-#                                          bar_choice=bar_choice, variable=variable)
-#             gaussian_kernel = create_kgauss(sigma2=-1, default_sigma2=1)
-#             analyzer.analyze(kgauss_instance=gaussian_kernel)
-#             test_results_dicts = analyzer.analyze_adaptive_two()
-#             # Save the test results for the current symbol/variable combination
-#             filename = f"{symbol}_{bar_choice}_{variable}_results.pickle"
-#             filepath = os.path.join(LinearMMDOutputFiles, filename)
-#             with open(filepath, 'wb') as f:
-#                 pickle.dump(test_results_dicts, f)
-#
+    def analyze_column(unpickled_df, start_point, end_point, shift, window, mmd_tester):
+        try:
+            test_results_one, test_results_two = mmd_tester.analyze(start_point, end_point, shift, window)
+            col1, col2 = unpickled_df.columns[start_point], unpickled_df.columns[end_point + shift]
+            result_key = f"{col1} vs {col2}, window={window}, shift={shift}"
+            return {result_key: {'Test Results 1': test_results_one, 'Test Results 2': test_results_two}}
+        except ValueError:
+            pass
+
+
+    # Generate all possible combinations of column pairs, window sizes, and shifts
+    column_pairs = list(combinations(unpickled_dataframe.columns, 2))
+    windows = range(5, 201, 5)
+    shifts = range(1, 11)
+
+    # Create a list of arguments for the analyze_column function
+    args_list = []
+    for start_point, end_point in combinations(range(len(unpickled_dataframe.columns)), 2):
+        for window in windows:
+            for shift in shifts:
+                args_list.append((start_point, end_point, shift, window))
+
+    # Create an instance of the MMDTester class outside the analyze_column function
+    mmd_tester = MMDTester(unpickled_dataframe)
+
+    # Use multiprocessing to analyze the data in parallel
+    with Pool(processes=cpu_count()) as pool:
+        results = pool.starmap(analyze_column,
+                               [(unpickled_dataframe, arg[0], arg[1], arg[2], arg[3], mmd_tester) for arg in args_list])
+
+    # Combine the results into a single dictionary
+    result_dict_nested = {}
+    for r in results:
+        if r:
+            result_dict_nested.update(r)
+
+    # Save the results to a CSV file
+    import csv
+
+    with open(os.path.join(outputDir, str(output_name)), 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Column Pair', 'Window', 'Shift', 'Test Results 1', 'Test Results 2'])
+        for key, value in result_dict_nested.items():
+            col_pair, window, shift = key.split(', ')
+            print('saved')
+            writer.writerow([col_pair, window, shift, value['Test Results 1'], value['Test Results 2']])
