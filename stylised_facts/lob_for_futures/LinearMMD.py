@@ -16,6 +16,9 @@ import pickle
 from itertools import combinations
 import itertools
 from multiprocessing import Pool, cpu_count
+import json
+import os
+import pickle
 
 
 # functions:
@@ -84,7 +87,7 @@ class MMDTester:
         try:
 
             list_kernels = [kernel.KGauss(w ** 2) for w in widths]
-            print('using these',list_kernels)
+            print('using these', list_kernels)
         except AssertionError:
             print('setting sigma2 =1 as sigma2 > 0, must be > 0')
             list_kernels = [create_kgauss(w ** 2, default_sigma2=1) for w in widths]
@@ -139,9 +142,9 @@ def analyze_column(mmd_tester, unpickled_df, start_point, end_point, shift, wind
 
 if __name__ == '__main__':
     # need to load a dataframe here
-    symbol = 'G_1'
+    symbol = 'XM1'
     LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
-    bar_choice = 'volume'
+    bar_choice = 'dollar'
     file = os.path.join(LinearMMDInputFiles,
                         [f for f in os.listdir(LinearMMDInputFiles) if (str(symbol) and str(bar_choice)) in f][0])
     outputDir = '/media/ak/T7/August11th2022Experiments/LinearMMDOutputFiles'
@@ -158,7 +161,7 @@ if __name__ == '__main__':
 
     ### this is the processing code!
     unpickled_dataframe = alpha_df
-    output_name = "_".join((str(symbol), str(bar_choice), 'processedLinearMMDresults', 'alpha.csv'))
+    output_name = "_".join((str(symbol), str(bar_choice), 'processedLinearMMDresults', 'alpha'))
     num_columns = unpickled_dataframe.shape[1]
 
     # Define MMDTester object
@@ -201,13 +204,21 @@ if __name__ == '__main__':
         if r:
             result_dict_nested.update(r)
 
-    # Save the results to a CSV file
-    import csv
+    # Save the results to a pickle file
+    output_file = os.path.join(outputDir, str(output_name) + ".pickle")
 
-    with open(os.path.join(outputDir, str(output_name)), 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(['Column Pair', 'Window', 'Shift', 'Test Results 1', 'Test Results 2'])
-        for key, value in result_dict_nested.items():
-            col_pair, window, shift = key.split(', ')
-            print('saved')
-            writer.writerow([col_pair, window, shift, value['Test Results 1'], value['Test Results 2']])
+    result_list = []
+    for key, value in result_dict_nested.items():
+        col_pair, window, shift = key.split(', ')
+        result_list.append({
+            "Column Pair": col_pair,
+            "Window": window,
+            "Shift": shift,
+            "Test Results 1": value["Test Results 1"],
+            "Test Results 2": value["Test Results 2"],
+        })
+
+    with open(output_file, "wb") as f:
+        pickle.dump(result_list, f)
+
+    print("Results saved to:", output_file)
