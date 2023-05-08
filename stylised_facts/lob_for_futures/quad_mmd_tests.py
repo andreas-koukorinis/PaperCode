@@ -25,7 +25,7 @@ def simulate_null_spectral(weights, n_simulate=1000, seed=275):
     """
     # draw at most block_size values at a time
     block_size = 400
-    D = chi2_weights.shape[0]  # len(weights)
+    D = weights.shape[0]  # len(weights)
     mmds = np.zeros(n_simulate)
     from_ind = 0
 
