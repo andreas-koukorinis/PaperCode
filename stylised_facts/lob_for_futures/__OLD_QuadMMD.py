@@ -13,6 +13,7 @@ import time
 import os
 import pandas as pd
 import pickle
+from itertools import combinations
 import itertools
 from multiprocessing import Pool, cpu_count
 import json
@@ -20,13 +21,7 @@ import os
 import pickle
 from concurrent.futures import ProcessPoolExecutor
 from itertools import combinations
-import os
-import pickle
-from multiprocessing import Pool, Manager
-from itertools import combinations, product
 
-
-### functions
 
 # functions:
 
@@ -266,12 +261,21 @@ def analyze_column(mmd_tester, unpickled_df, start_point, end_point, shift, wind
 
 class QuadMMDAnalysis(MMDTester):
     def __init__(self, df, symbol, LinearMMDOutputFiles, bar_choice, variable):
+        """
+        Initialize QuadMMDAnalysis with the input data frame and other parameters.
+
+        :param df: Input data frame containing the data to be analyzed.
+        :param symbol: A string representing the symbol of the financial instrument.
+        :param output_directory: A string representing the path to the output directory.
+        :param bar_choice: A string representing the choice of bars (e.g., "BarChoice").
+        :param variable: A string representing the variable (e.g., "Variable").
+               """
+
         self.df = df
         self.symbol = symbol
         self.LinearMMDOutputFiles = LinearMMDOutputFiles
         self.bar_choice = bar_choice
         self.variable = variable
-        self.num_columns = df.shape[1]  # add this line
 
     def run_quad_mmd_analysis(self, start_point, end_point, shift, window):
         """
@@ -282,17 +286,8 @@ class QuadMMDAnalysis(MMDTester):
         # Run perform_quad_mmd_tests with the parameters set as class attributes
         mmd_train_test_results = self.perform_quad_mmd_tests(start_point, end_point, shift, window)
 
-        # Create a results dictionary
-        results_dict = {
-            "start_point": start_point,
-            "end_point": end_point,
-            "shift": shift,
-            "window": window,
-            "results": mmd_train_test_results
-        }
-
-        # Return the results dictionary
-        return results_dict
+        # Print the results
+        print(mmd_train_test_results)
 
     def run_single_analysis(self, start_point, end_point, shift, window):
         """
@@ -309,19 +304,30 @@ class QuadMMDAnalysis(MMDTester):
         self.end_point = end_point
         self.shift = shift
         self.window = window
-        result = self.run_quad_mmd_analysis(start_point, end_point, shift, window)
+        result = self.run_quad_mmd_analysis(self.start_point, self.end_point, self.shift, self.window)
 
         return (start_point, end_point, shift, window, result)
 
     def run_multiple_quad_mmd_analyses(self, windows, shifts, n_jobs=-1):
+        """
+        Run the perform_quad_mmd_tests method for multiple combinations of shifts and windows with parallelization.
+
+        :param windows: A list of integers representing the window sizes to be used during the analysis.
+        :param shifts: A list of integers representing the shifts to be applied during the analysis.
+        :param n_jobs: The number of parallel processes to be used during the analysis.
+        :return: A dictionary containing the results of the quad MMD analysis for all combinations.
+        """
+        # Generate all possible combinations of column pairs, window sizes, and shifts
         column_pairs = list(combinations(self.df.columns, 2))
 
+        # Create a list of arguments for the analyze_column function
         args_list = []
         for start_point, end_point in column_pairs:
             for window in windows:
                 for shift in shifts:
                     args_list.append((start_point, end_point, shift, window))
 
+        # Run quad MMD analysis for all combinations and store the results in a dictionary
         results_dict = {}
         if n_jobs == -1:
             n_jobs = os.cpu_count() or 1
@@ -332,58 +338,69 @@ class QuadMMDAnalysis(MMDTester):
 
         return results_dict
 
-    def analyze_mmd_column_wrapper(self, args):
-        start_point, end_point, shift, window = args
-
-        try:
-            result_dict = self.analyze_mmd_column(start_point, end_point, shift, window)
-        except ValueError:
-            print("Error: MMD test could not be performed.")
-            return {}
-        else:
-            return result_dict
+        # Modify the run_quad_mmd_analysis method to use smaller ranges
 
     def faster_run_quad_mmd_analysis(self):
-        """
-        Run quad MMD analysis on multiple combinations of column pairs, window sizes, and shifts in parallel.
-        This function uses Python's multiprocessing module to speed up the analysis.
-        """
-        from itertools import combinations
-        from multiprocessing import Pool, cpu_count
+        num_columns = self.df.shape[1]
 
-        # Generate all possible combinations of column pairs, window sizes, and shifts
+        # Generate all possible combinations of column pairs, window sizes, and shifts with smaller ranges
         windows = range(5, 101, 10)
         shifts = range(1, 6)
         args_list = []
-
-        for start_point, end_point in list(combinations(range(self.num_columns), 2)):
+        result_dict = {}
+        for start_point, end_point in list(combinations(range(len(self.df.columns)), 2))[:10]:  # Limit to 10 pairs
             for window in windows:
                 for shift in shifts:
-                    args_list.append((start_point, end_point, shift, window))
+                    args_list.append((start_point, end_point, shift, window, result_dict))
 
-        # Perform quad MMD analysis on each combination in parallel
+        # Use multiprocessing to analyze the data in parallel
         with Pool(processes=cpu_count()) as pool:
-            results = pool.map(self.analyze_mmd_column_wrapper, args_list)
+            results = pool.starmap(self.analyze_mmd_column, [(start_point, end_point, shift, window, self, {}) for
+                                                             start_point, end_point, shift, window in args_list])
 
-        # Combine all results into a single dictionary
+        # Combine the results into a single dictionary
         result_dict = {}
-        for res in results:
-            result_dict.update(res)
+        for key, value in results:
+            if value:
+                result_dict[key] = value
 
-        print("Results from multiprocessing:", result_dict)
+        # Save the results to a pickle file
+        output_file = os.path.join(self.LinearMMDOutputFiles,
+                                   f"{self.symbol}_{self.bar_choice}_processedQUADMMDresults_{self.variable}.pickle")
 
-        return result_dict
+        result_list = []
+        for key, value in result_dict.items():
+            col_pair = f"{self.df.columns[key[0]]} vs {self.df.columns[key[1] + key[2]]}"
+            window, shift = key[3], key[2]
+            result_list.append({
+                "Column Pair": col_pair,
+                "Window": window,
+                "Shift": shift,
+                "Test Results 1": value["Test Results 1"],
+                "Test Results 2": value["Test Results 2"],
+            })
+
+        with open(output_file, "wb") as f:
+            pickle.dump(result_list, f)
+
+        print("Results saved to:", output_file)
 
     def analyze_mmd_column(self, start_point, end_point, shift, window):
-        print(
-            f"analyze_mmd_column called with: start_point={start_point}, end_point={end_point}, shift={shift}, window={window}")  # Add this print statement
+        result_dict = {}
         try:
             result = self.run_single_analysis(start_point, end_point, shift, window)
-            print(result)
+            result_dict[(start_point, end_point, shift, window)] = result
+        except ValueError:
+            pass
+        return result_dict
+
+    def analyze_mmd_column(self, start_point, end_point, shift, window, result_dict):
+        try:
+            test_results_one, test_results_two = self.run_single_analysis(start_point, end_point, shift, window)
             col1, col2 = self.df.columns[start_point], self.df.columns[end_point + shift]
             result_key = f"{col1} vs {col2}, window={window}, shift={shift}"
-            return (
-                (start_point, end_point, shift, window), {'Test Results 1': result[0], 'Test Results 2': result[1]})
+            result_dict[(start_point, end_point, shift, window)] = {'Test Results 1': test_results_one,
+                                                                    'Test Results 2': test_results_two}
         except ValueError:
             pass
 
@@ -405,49 +422,30 @@ class QuadMMDAnalysis(MMDTester):
         print("Results saved to:", output_file)
 
 
-# Define a function to be run in parallel
-def run_analysis(args):
-    start_point, end_point, shift, window = args
-    result = quad_mmd_analysis.run_quad_mmd_analysis(start_point, end_point, shift, window)
-    return (args, result)
+def analyze_mmd_column(self, start_point, end_point, shift, window):
+    try:
+        result = self.run_single_analysis(start_point, end_point, shift, window)
+        col1, col2 = self.df.columns[start_point], self.df.columns[end_point + shift]
+        result_key = f"{col1} vs {col2}, window={window}, shift={shift}"
+        return ((start_point, end_point, shift, window), {'Test Results 1': result[0], 'Test Results 2': result[1]})
+    except ValueError:
+        pass
 
+def analyze_column(unpickled_df, start_point, end_point, shift, window, mmd_tester):
+    try:
+        test_results_one, test_results_two = mmd_tester.analyze(start_point, end_point, shift, window)
+        col1, col2 = unpickled_df.columns[start_point], unpickled_df.columns[end_point + shift]
+        result_key = f"{col1} vs {col2}, window={window}, shift={shift}"
+        return {result_key: {'Test Results 1': test_results_one, 'Test Results 2': test_results_two}}
+    except ValueError:
+        pass
 
-def main(df, QuadMMDOutputFiles, symbol, bar_choice, variable):
-    windows = range(5, 101, 10)
-    shifts = range(1, 6)
-    num_columns = df.shape[1]
-
-    # Use a generator to create combinations on the fly
-    args_generator = ((start_point, end_point, shift, window)
-                      for start_point, end_point in combinations(range(num_columns), 2)
-                      for window in windows
-                      for shift in shifts)
-
-    # Create a manager for shared state between processes
-    with Manager() as manager:
-        # Create a shared dictionary
-        results_dict = manager.dict()
-
-        # Create a pool of worker processes
-        with Pool() as pool:
-            # Store the results in the shared dictionary
-            for args, result in pool.imap_unordered(run_analysis, args_generator):
-                results_dict[(args)] = result
-
-        # Convert the shared dictionary to a regular dictionary for pickling
-        results_dict = dict(results_dict)
-        output_filename = os.path.join(QuadMMDOutputFiles,
-                                       f"{symbol}_{bar_choice}_processedQUADMMDresults_{variable}.pickle")
-        # Ensure the designated directory exists
-        os.makedirs(QuadMMDOutputFiles, exist_ok=True)
-        # Pickle the results dictionary and save it in a file
-        with open(output_filename, "wb") as f:
-            pickle.dump(results_dict, f)
 
 if __name__ == '__main__':
+    # need to load a dataframe here
     symbol = 'XM1'
     LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
-    quad_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
+    linear_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
     bar_choice = 'tick'
 
     outputDir = '/media/ak/T7/August11th2022Experiments/LinearMMDOutputFiles'
@@ -465,10 +463,17 @@ if __name__ == '__main__':
     alpha_df = pd.DataFrame.from_dict(data_dict['alpha'])
 
     # # # this is the processing code!
-    unpickled_dataframe = alpha_df
-    variable = 'alpha'  # bar_choice variable (based on above) - this is the mfdfa variable
+    unpickled_dataframe = tau_df
+    variable = 'tau'  # bar_choice variable (based on above) - this is the mfdfa variable
     output_name = "_".join((str(symbol), str(bar_choice), 'processedQUADMMDresults', str(variable)))
-    quad_mmd_analysis = QuadMMDAnalysis(unpickled_dataframe, symbol, quad_mmd_output_files, bar_choice, variable)
-    main(df = unpickled_dataframe,
-         QuadMMDOutputFiles=quad_mmd_output_files,
-         bar_choice=bar_choice, symbol=symbol,variable=variable)
+    num_columns = unpickled_dataframe.shape[1]
+    quad_mmd_analysis = QuadMMDAnalysis(unpickled_dataframe, symbol, linear_mmd_output_files, bar_choice, variable)
+    # start_point = 0
+    # end_point = 1
+    # shift = 1
+    # window = 10
+    # quad_mmd_analysis.run_quad_mmd_analysis(start_point, end_point, shift, window)
+    windows = [2, ]
+    shifts = [1, 2,]
+    # quad_mmd_analysis.run_multiple_quad_mmd_analyses(windows, shifts)
+    quad_mmd_analysis.faster_run_quad_mmd_analysis()
