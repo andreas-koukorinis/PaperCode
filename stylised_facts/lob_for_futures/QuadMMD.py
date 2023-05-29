@@ -92,7 +92,6 @@ def simulate_null_spectral(weights, n_simulate=1000, seed=275):
             from_ind = end_ind
     return mmds
 
-
 def chi_square_weights_H0(k, X):
     """
     Return a numpy array of the weights to be used as the weights in the
@@ -100,19 +99,43 @@ def chi_square_weights_H0(k, X):
     - k: a Kernel
     - X: n x d number array of n data points
     """
-    n = X.shape[0]
-    # Gram matrix
-    K = k.eval(X, X)
-    # centring matrix. Not the most efficient way.
-    H = np.eye(n) - np.ones((n, n)) / float(n)
-    HKH = H.dot(K).dot(H)
-    # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.linalg.eigvals.html
-    evals = np.linalg.eigvals(HKH)
-    evals = np.real(evals)
-    # sort in decreasing order
-    evals = -np.sort(-evals)
-    weights = evals / float(n) ** 2
-    return weights
+    try:
+        n = X.shape[0]
+        # Gram matrix
+        K = k.eval(X, X)
+        # centring matrix. Not the most efficient way.
+        H = np.eye(n) - np.ones((n, n)) / float(n)
+        HKH = H.dot(K).dot(H)
+        # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.linalg.eigvals.html
+        evals = np.linalg.eigvals(HKH)
+        evals = np.real(evals)
+        # sort in decreasing order
+        evals = -np.sort(-evals)
+        weights = evals / float(n) ** 2
+        return weights
+    except np.linalg.LinAlgError as e:
+        print("LinAlgError:", str(e))
+        return np.array([])  # Return an empty array or any other appropriate value
+# def chi_square_weights_H0(k, X):
+#     """
+#     Return a numpy array of the weights to be used as the weights in the
+#     weighted sum of chi-squares for the null distribution of MMD^2.
+#     - k: a Kernel
+#     - X: n x d number array of n data points
+#     """
+#     n = X.shape[0]
+#     # Gram matrix
+#     K = k.eval(X, X)
+#     # centring matrix. Not the most efficient way.
+#     H = np.eye(n) - np.ones((n, n)) / float(n)
+#     HKH = H.dot(K).dot(H)
+#     # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.linalg.eigvals.html
+#     evals = np.linalg.eigvals(HKH)
+#     evals = np.real(evals)
+#     # sort in decreasing order
+#     evals = -np.sort(-evals)
+#     weights = evals / float(n) ** 2
+#     return weights
 
 
 class MMDTester:
@@ -198,7 +221,11 @@ class MMDTester:
             xtr, ytr = tr.xy()
             xytr = tr.stack_xy()
             sig2 = util.meddistance(xytr, subsample=1000)
-            k = kernel.KGauss(sig2)
+            try:
+                k = kernel.KGauss(sig2)
+            except AssertionError:
+                print('setting sigma2 =1 as sigma2 > 0, must be > 0')
+                k = kernel.KGauss(1)
             mean, var = tst.QuadMMDTest.h1_mean_var(xtr, ytr, k, is_var_computed=True)
             Kx = k.eval(xtr, xtr)
             Ky = k.eval(ytr, ytr)
@@ -210,9 +237,13 @@ class MMDTester:
             med = util.meddistance(tr.stack_xy(), 1000)
             list_gwidth = np.hstack(((med ** 2) * (2.0 ** np.linspace(-4, 4, 20))))
             list_gwidth.sort()
-            list_kernels = [kernel.KGauss(gw2) for gw2 in list_gwidth]
-            list_kernels_verbose = [kernel.KGauss(gw2).__str__() for gw2 in list_gwidth]
-
+            try:
+                list_kernels = [kernel.KGauss(gw2) for gw2 in list_gwidth]
+                list_kernels_verbose = [kernel.KGauss(gw2).__str__() for gw2 in list_gwidth]
+                print('using these', list_kernels)
+            except AssertionError:
+                print('setting sigma2 =1 as sigma2 > 0, must be > 0')
+                list_kernels = [create_kgauss(gw2 ** 2, default_sigma2=1) for gw2 in list_gwidth]
             # grid search to choose the best Gaussian width
             besti, powers = tst.QuadMMDTest.grid_search_kernel(tr, list_kernels, alpha=0.05)
             # perform test
@@ -235,7 +266,7 @@ class MMDTester:
             mmd_train_test_results[start_point]['var_gram'] = var_gram
             mmd_train_test_results[start_point]['med'] = util.meddistance(tr.stack_xy(), 1000)
             mmd_train_test_results[start_point]['list_gwidth'] = list_gwidth.sort()
-            mmd_train_test_results[start_point]['list_kernels'] = list_kernels_verbose
+            #mmd_train_test_results[start_point]['list_kernels'] = [kernel.KGauss(gw2).__str__() for gw2 in list_gwidth]
             mmd_train_test_results[start_point]['besti'] = besti
             mmd_train_test_results[start_point]['powers'] = powers
             mmd_train_test_results[start_point]['best_ker'] = best_ker.__str__()
@@ -445,11 +476,10 @@ def main(df, QuadMMDOutputFiles, symbol, bar_choice, variable):
             pickle.dump(results_dict, f)
 
 if __name__ == '__main__':
-    symbol = 'XM1'
+    symbol = 'TY1'
     LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
     quad_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
-    bar_choice = 'tick'
-
+    bar_choice = 'calendar'
     outputDir = '/media/ak/T7/August11th2022Experiments/LinearMMDOutputFiles'
     variables = ['n_F', 'list_H', 'list_H_intercept', 'tau', 'alpha', 'mfSpect']
     file = os.path.join(LinearMMDInputFiles,
@@ -463,10 +493,9 @@ if __name__ == '__main__':
     list_H = data_dict['list_H']
     tau_df = pd.DataFrame.from_dict(data_dict['tau'])
     alpha_df = pd.DataFrame.from_dict(data_dict['alpha'])
-
     # # # this is the processing code!
-    unpickled_dataframe = alpha_df
-    variable = 'alpha'  # bar_choice variable (based on above) - this is the mfdfa variable
+    unpickled_dataframe = tau_df
+    variable = 'tau'  # bar_choice variable (based on above) - this is the mfdfa variable
     output_name = "_".join((str(symbol), str(bar_choice), 'processedQUADMMDresults', str(variable)))
     quad_mmd_analysis = QuadMMDAnalysis(unpickled_dataframe, symbol, quad_mmd_output_files, bar_choice, variable)
     main(df = unpickled_dataframe,
