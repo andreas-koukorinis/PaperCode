@@ -7,25 +7,31 @@ import json
 import re
 import yaml
 import pickle
-# LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
-# quad_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
-quadAlpha = '/media/ak/My Passport/QuadAlpha' #- work laptop
+#LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
+quad_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
+quadAlpha = quad_mmd_output_files
+#'/media/ak/My Passport/QuadAlpha' #- work laptop
 #os.listdir(quad_mmd_output_files)
+def pickle_dump_obj_to_filename(destinationPath, fileName, obj):
+    pickle_out_filename = os.path.join(destinationPath, fileName)
+    with open(pickle_out_filename, 'wb') as pickle_out:
+        pickle.dump(obj, pickle_out)
+    print('Saved', pickle_out_filename)
 
-def pickle_dump_obj_to_filename(destinationPath, symbol, fileName, obj):
-    """
-    Using this to dump results for a list to file
-    :param destinationPath: path where the pickle should be dumped
-    :param symbol: Symbol that should accompany the file
-    :param fileName: the specific filename you want to use, like OOSResults.pkl
-    :param obj: the object you want to pickle
-    :return: dumps an obj to file
-    """
-    pickle_out_filename = os.path.join(destinationPath, "_".join((symbol, fileName)))
-    pickle_out = open(pickle_out_filename, 'wb')
-    pickle.dump(obj, pickle_out)
-    pickle_out.close()
-    print('saved', pickle_out_filename)
+# def pickle_dump_obj_to_filename(destinationPath, symbol, fileName, obj):
+#     """
+#     Using this to dump results for a list to file
+#     :param destinationPath: path where the pickle should be dumped
+#     :param symbol: Symbol that should accompany the file
+#     :param fileName: the specific filename you want to use, like OOSResults.pkl
+#     :param obj: the object you want to pickle
+#     :return: dumps an obj to file
+#     """
+#     pickle_out_filename = os.path.join(destinationPath, "_".join((symbol, fileName)))
+#     pickle_out = open(pickle_out_filename, 'wb')
+#     pickle.dump(obj, pickle_out)
+#     pickle_out.close()
+#     print('saved', pickle_out_filename)
 
 def iterate_and_remove_empty_entries(dictionary):
     """Iterates through a dictionary and removes all the entries for which the
@@ -36,7 +42,6 @@ def iterate_and_remove_empty_entries(dictionary):
     The new dictionary without the removed entries.
   """
     return {key: value for key, value in dictionary.items() if not (isinstance(value, defaultdict) and not value)}
-
 
 def compute_medians(data, prefix=''):
     result = {}
@@ -58,15 +63,15 @@ def compute_medians(data, prefix=''):
             result[key] = v
 
     return result
+
 def remove_prefix_from_index(df, prefix):
     df.index = df.index.to_series().str.replace(prefix, '')
     return df
 
-
 if __name__ == "__main__":
     symbol = 'XM1'
     var = 'alpha'
-    quadAlpha = quadAlpha #os.path.join(quad_mmd_output_files, var)
+    quadAlpha = os.path.join(quad_mmd_output_files, var) #quadAlpha
     files = [f for f in os.listdir(os.path.join(quadAlpha)) if str(symbol) in f]
     bar_choice = 'tick'
     varFile = [f for f in files if str(bar_choice) in f][0]
@@ -84,7 +89,7 @@ if __name__ == "__main__":
             prefix_ = 'results_'
             df_clean = (remove_prefix_from_index(df, prefix_+str(key[0])+'_'))
             print(df_clean)
-            fileName = str(keyToNumber)+'_results_DF.pkl'
-            pickle_dump_obj_to_filename(destinationPath=quadAlpha, fileName=fileName, symbol=symbol, obj=df)
+            # fileName = str(keyToNumber)+'_results_DF.pkl'
+            # pickle_dump_obj_to_filename(destinationPath=quadAlpha, fileName=fileName, symbol=symbol, obj=df)
 
     # print(compute_medians(new_dictionary,{}))
