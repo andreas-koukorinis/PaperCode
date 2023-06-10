@@ -54,16 +54,16 @@ def process_dictionary_into_dataframe(clean_dictionary):
     return df
 
 if __name__ == "__main__":
-    symbol = 'G_1'
-    var = 'alpha'
+    symbol = 'TY1'
+    var = 'tau'
     quadAlpha = os.path.join(quad_mmd_output_files, var)
     files = [f for f in os.listdir(quadAlpha) if str(symbol) in f]
-    bar_choice = 'volume'
+    bar_choice = 'tick'
     varFile = [f for f in files if str(bar_choice) in f][0]
     varFileLoc = os.path.join(quadAlpha, varFile)
     print(varFileLoc)
     pickled_dict = pd.read_pickle(varFileLoc)
-    output_directory = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles/processedAlphaResults/'
+    output_directory = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles/processedTauResults/'
     # clean_directory = ((iterate_and_remove_empty_entries(pickled_dict)))
     clean_directory_keys =list(pickled_dict.keys())
     for key in clean_directory_keys:
