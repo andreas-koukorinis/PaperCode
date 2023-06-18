@@ -4,7 +4,7 @@ import pandas as pd
 import pickle
 from collections import defaultdict
 
-quad_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
+quad_mmd_output_files = '/media/ak/T71/August11th2022Experiments/QuadMMDOutputFiles'
 
 
 def pickle_dump_obj_to_filename(destinationPath, symbol, fileName, obj):
@@ -12,6 +12,7 @@ def pickle_dump_obj_to_filename(destinationPath, symbol, fileName, obj):
     with open(pickle_out_filename, 'wb') as pickle_out:
         pickle.dump(obj, pickle_out)
     print('saved', pickle_out_filename)
+
 
 def iterate_and_remove_empty_entries(some_dict):
     cleaned_dict = {}
@@ -53,26 +54,27 @@ def process_dictionary_into_dataframe(clean_dictionary):
     df.index.names = ['start_point', 'end_point', 'shift', 'window']
     return df
 
+
 if __name__ == "__main__":
-    symbol = 'TY1'
+    symbol = 'G_1'
     var = 'tau'
     quadAlpha = os.path.join(quad_mmd_output_files, var)
     files = [f for f in os.listdir(quadAlpha) if str(symbol) in f]
-    bar_choice = 'tick'
+    bar_choice = 'calendar'
     varFile = [f for f in files if str(bar_choice) in f][0]
     varFileLoc = os.path.join(quadAlpha, varFile)
     print(varFileLoc)
     pickled_dict = pd.read_pickle(varFileLoc)
-    output_directory = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles/processedTauResults/'
+    output_directory = '/media/ak/T71/August11th2022Experiments/QuadMMDOutputFiles/processedTauResults/'
     # clean_directory = ((iterate_and_remove_empty_entries(pickled_dict)))
-    clean_directory_keys =list(pickled_dict.keys())
+    clean_directory_keys = list(pickled_dict.keys())
     for key in clean_directory_keys:
         value = pickled_dict[key]  # Extract value
         if not value['results']:  # Check if 'results' sub-dict is empty
             print(f'Empty dict at key {key}')
         else:
             print(key)  # If not, print the dictionary
-            filename = f"{bar_choice}_{int(''.join(map(str, key)))}_{var}results.pickle"
+            filename = f"{bar_choice}_{int(''.join(map(str, key)))}_{var}_results.pickle"
             pickle_dump_obj_to_filename(output_directory, symbol, filename, value)
-            #print(value)
-
+            print(value)
+    #

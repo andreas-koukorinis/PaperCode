@@ -73,7 +73,7 @@ if __name__ == "__main__":
     var = 'alpha'
     quadAlpha = os.path.join(quad_mmd_output_files, var) #quadAlpha
     files = [f for f in os.listdir(os.path.join(quadAlpha)) if str(symbol) in f]
-    bar_choice = 'tick'
+    bar_choice = 'volume'
     varFile = [f for f in files if str(bar_choice) in f][0]
     varFileLoc = os.path.join(os.path.join(quadAlpha), varFile)
     print(varFileLoc)

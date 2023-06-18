@@ -477,13 +477,18 @@ def main(df, QuadMMDOutputFiles, symbol, bar_choice, variable):
 
 if __name__ == '__main__':
     symbol = 'TY1'
-    LinearMMDInputFiles = '/media/ak/T7/August11th2022Experiments/LinearMMDInputFiles/'
-    quad_mmd_output_files = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles'
-    bar_choice = 'calendar'
+    LinearMMDInputFiles = '/media/ak/T71/August11th2022Experiments/LinearMMDInputFiles/'
+    quad_mmd_output_files = '/media/ak/T71/August11th2022Experiments/QuadMMDOutputFiles'
+    bar_choice = 'dollar'
     outputDir = '/media/ak/T7/August11th2022Experiments/LinearMMDOutputFiles'
     variables = ['n_F', 'list_H', 'list_H_intercept', 'tau', 'alpha', 'mfSpect']
     file = os.path.join(LinearMMDInputFiles,
-                        [f for f in os.listdir(LinearMMDInputFiles) if (str(symbol) and str(bar_choice)) in f][0])
+                        [g for g in [f for f in os.listdir(LinearMMDInputFiles) if symbol in f] if
+                         str(bar_choice) in g][0])
+    # return file
+    print('---------------------------------')
+    print(file)
+    print('---------------------------------')
     data_dict = pd.read_pickle(file)
 
     # Create a list of DataFrames with names from the dictionary keys
@@ -494,9 +499,12 @@ if __name__ == '__main__':
     tau_df = pd.DataFrame.from_dict(data_dict['tau'])
     alpha_df = pd.DataFrame.from_dict(data_dict['alpha'])
     # # # this is the processing code!
-    unpickled_dataframe = tau_df
-    variable = 'tau'  # bar_choice variable (based on above) - this is the mfdfa variable
+    unpickled_dataframe = alpha_df
+    variable = 'alpha'  # bar_choice variable (based on above) - this is the mfdfa variable
     output_name = "_".join((str(symbol), str(bar_choice), 'processedQUADMMDresults', str(variable)))
+    print('-----------------------')
+    print(output_name)
+    print('-----------------------')
     quad_mmd_analysis = QuadMMDAnalysis(unpickled_dataframe, symbol, quad_mmd_output_files, bar_choice, variable)
     main(df = unpickled_dataframe,
          QuadMMDOutputFiles=quad_mmd_output_files,
