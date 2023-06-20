@@ -78,8 +78,8 @@ def remove_empty_results(dictionary):
     return {k: v for k, v in dictionary.items() if v.get('results')}
 
 def main():
-    mainDir = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles/'
-    quadAlpha = '/media/ak/T7/August11th2022Experiments/QuadMMDOutputFiles/alpha'
+    mainDir = '/media/ak/T71/August11th2022Experiments/QuadMMDOutputFiles/'
+    quadAlpha = '/media/ak/T71/August11th2022Experiments/QuadMMDOutputFiles/alpha'
     #quadAlpha = '/media/ak/My Passport/QuadAlpha'
     symbol = 'G_1'
     bar_choice = 'dollar'
@@ -104,9 +104,10 @@ def main():
     new_dict_name = "_".join((symbol, bar_choice,'quad_mmd_consold_results.pkl'))
     # Remove empty entries from new_dictionary
     final_dictionary = iterate_and_remove_empty_entries(new_dictionary)
+    print(final_dictionary)
 
-    with open(os.path.join(target_dir,new_dict_name), 'wb') as f:
-        pickle.dump(final_dictionary, f)
+    # with open(os.path.join(target_dir,new_dict_name), 'wb') as f:
+    #     pickle.dump(final_dictionary, f)
     print(final_dictionary)
 
 
