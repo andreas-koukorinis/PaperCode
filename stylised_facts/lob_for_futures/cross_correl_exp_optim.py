@@ -17,7 +17,27 @@ POL_ORD = 1
 MICRO_VARIABLES = ['arrival_rates', 'gk_vol', 'median_traded_volume', 'micro_price_change']
 
 
+def compute_intraday_volatility(micro_prices: pd.Series) -> float:
+    """
+    Compute the intraday volatility of returns based on micro prices.
+
+    :param micro_prices: A Pandas Series containing micro price data.
+    :type micro_prices: pd.Series
+    :return: Intraday volatility of returns.
+    :rtype: float
+    """
+    log_returns = np.log(micro_prices / micro_prices.shift(1))
+    intraday_volatility = np.std(log_returns)
+
+    return intraday_volatility
+
+
 class MicroVariableProcessor:
+    '''
+    MicroVariableProcessor class is designed to process a set of data files
+    (presumably related to financial markets),
+    compute certain attributes from the data, and store these attributes in dictionaries for future usage.
+    '''
     def __init__(self, base_path: str, symbol: str, bar: str):
         """
         Initialize the MicroVariableProcessor class.
@@ -41,21 +61,12 @@ class MicroVariableProcessor:
         self.arrival_rates_dict = defaultdict(dict)
         self.micro_price = defaultdict(dict)
 
-    def compute_intraday_volatility(self, micro_prices: pd.Series) -> float:
-        """
-        Compute the intraday volatility of returns based on micro prices.
-
-        :param micro_prices: A Pandas Series containing micro price data.
-        :type micro_prices: pd.Series
-        :return: Intraday volatility of returns.
-        :rtype: float
-        """
-        log_returns = np.log(micro_prices / micro_prices.shift(1))
-        intraday_volatility = np.std(log_returns)
-
-        return intraday_volatility
-
     def process_file(self, idx: int) -> Dict:
+        """
+        Processes a file at a given index and extracts specific variables.Processes all the files in a concurrent manner.
+        :param idx:
+        :return: variables
+        """
         micro_variables = ['arrival_rates', 'GK_vol', 'median_traded_volume', 'micro_price_change']
         file_path = os.path.join(self.symbol_path, self.bar_mfdfa_files[idx])
         pkl_dict = pd.read_pickle(file_path)
@@ -91,6 +102,10 @@ class MicroVariableProcessor:
         return std_df, first_regime, second_regime
 
     def process_files(self):
+        """
+        Returns a dictionary containing the computed intraday volatility and other attributes for a specific file index.
+        :return:
+        """
         results = []
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -119,7 +134,7 @@ class MicroVariableProcessor:
 
     def get_output(self, idx):
         """
-        Return the computed intraday volatility and other attributes.
+        Return the computed intraday volatility and other attributes. Saves the computed output to a specified file.
 
         :param idx: The index of the file to be processed.
         :type idx: int
@@ -136,7 +151,7 @@ class MicroVariableProcessor:
         self.micro_prices = micro_prices
 
         output = {
-            "intraday_volatility": self.compute_intraday_volatility(self.micro_prices),
+            "intraday_volatility": compute_intraday_volatility(self.micro_prices),
             "gk_vol": file_data["gk_vol"],
             "median_traded_volume": file_data["median_traded_volume"],
             "arrival_rates": file_data["arrival_rates"],
