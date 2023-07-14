@@ -472,14 +472,10 @@ class DataLoader:
             concat_dict[bar] = pd.concat([input_dict[bar][i]
                                           for i in range(len(input_dict[bar]))], ignore_index=False)
         return concat_dict
-
-
 def return_scaled(x):
     scaler = StandardScaler()
     x_scaled = scaler.fit_transform(np.array(x).reshape(-1, 1))
     return np.asarray(x_scaled)
-
-
 ####
 def symbol_file_name_path(experimentsDestination, symbol, file_idx):
     symbolPath = os.path.join(experimentsDestination, str(symbol))
