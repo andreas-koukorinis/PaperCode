@@ -243,7 +243,7 @@ if __name__ == "__main__":
     data_path = '/media/ak/Data/InterestRateFuturesData/QuotesTrades/'
     base_directory = '/media/ak/Data/InterestRateFuturesData'
     reconstructed_lob_directory = '/media/ak/Data/InterestRateFuturesData/ReconstructedLOB/'
-    symbols = ['UST5y', 'UST10y']  # This is the symbols list
+    symbols = ['UST2y']  # This is the symbols list
     '''
     This code creates a list of symbols that you want to process. 
     Then it uses a ProcessPoolExecutor to process each symbol in a separate process. 

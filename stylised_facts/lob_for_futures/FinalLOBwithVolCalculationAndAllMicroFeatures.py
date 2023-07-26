@@ -238,8 +238,6 @@ cleanLOBFolder = '/media/ak/Data/CleanLOBData'
 interestRateFuturesFolder = '/media/ak/Data/InterestRateFuturesData'
 reconstrLOBFolder = os.path.join(interestRateFuturesFolder, 'ReconstructedLOB')
 eventClocksFiles = os.path.join(interestRateFuturesFolder, 'EventClocksFiles')
-bars = ['tick', 'volume', 'dollar']
-symbols = ['RX1', 'DU1']
 
 if __name__ == "__main__":
     # Load parameter sets from JSON file

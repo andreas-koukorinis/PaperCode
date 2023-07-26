@@ -150,7 +150,7 @@ if __name__ == '__main__':
     eventClockPaths = '/media/ak/Data/InterestRateFuturesData/EventClocksFiles'
     # symbols_list = ['DU1', 'FB1', 'FV1', 'JB1', 'KE1', 'OE1', 'RX1', 'US1', 'US2y', 'XM1',
     #                 'YM1']  # Add more symbols to the list if needed
-    bar_types_list = ['dollar']  # Add more bar types to the list if needed
+    bar_types_list = ['tick', 'dollar','volume', ]  # Add more bar types to the list if needed
     inputLocation = eventClockPaths
-    symbols_list = ['RX1']
+    symbols_list = ['OE1']
     main(inputLocation, symbols_list, bar_types_list)
