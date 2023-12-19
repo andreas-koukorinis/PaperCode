@@ -295,6 +295,163 @@ def analyze_column(mmd_tester, unpickled_df, start_point, end_point, shift, wind
         pass
 
 
+class MMDTester:
+    def __init__(self, df):
+        self.df = df
+
+    def get_data(self, start_point, end_point, shift, window):
+        min_length = min(self.df.iloc[:, start_point:end_point].shape[0],
+                         self.df.iloc[:, end_point + shift:end_point + 2 * shift].shape[0],
+                         self.df.iloc[:, start_point + window:end_point + window].shape[0])
+
+        X = np.array(self.df.iloc[:min_length, start_point:end_point])
+        Y = np.array(self.df.iloc[:min_length, end_point + shift:end_point + 2 * shift])
+        Z = np.array(self.df.iloc[:min_length, start_point + window:end_point + window])
+
+        return X, Y, Z
+
+    def perform_tests(self, X, Y, Z):
+        data_sample = data.TSTData(X, Y)
+        test_data_one = data.TSTData(X, Z)
+        test_data_two = data.TSTData(Y, Z)
+
+        tr, te = data_sample.split_tr_te(tr_proportion=0.9, seed=100)
+
+        med = util.meddistance(tr.stack_xy())
+        widths = [(med * f) for f in 2.0 ** np.linspace(0, 4, 25)]
+        try:
+
+            list_kernels = [kernel.KGauss(w ** 2) for w in widths]
+            print('using these', list_kernels)
+        except AssertionError:
+            print('setting sigma2 =1 as sigma2 > 0, must be > 0')
+            list_kernels = [create_kgauss(w ** 2, default_sigma2=1) for w in widths]
+
+        besti, powers = tst.LinearMMDTest.grid_search_kernel(tr, list_kernels, alpha=0.01)
+
+        plt.plot(widths, powers, 'o-')
+        plt.xlabel('Gaussian width')
+        plt.ylabel('test power')
+        plt.title('median distance = %.3g. Best width: %.3g' % (med, widths[besti]))
+        plt.show()
+
+        best_ker = list_kernels[besti]
+        lin_mmd_test = tst.LinearMMDTest(best_ker, alpha=0.01)
+
+        test_results_one = {
+            'widths': widths,
+            'med': med,
+            'besti': besti,
+            'powers': powers,
+            'med_on_test_data': util.meddistance(test_data_one.stack_xy()),
+            'test_result': lin_mmd_test.perform_test(test_data_one),
+            'test_variance': lin_mmd_test.variance(X, Z, best_ker),
+            'two_moments': lin_mmd_test.two_moments(X, Z, best_ker),
+            'compute_unbiased_linear_estimator': lin_mmd_test.compute_stat(test_data_one)
+        }
+
+        test_results_two = {
+            'test_result': lin_mmd_test.perform_test(test_data_two),
+            'test_variance': lin_mmd_test.variance(Y, Z, best_ker),
+            'med_on_test_data': util.meddistance(test_data_two.stack_xy()),
+            'two_moments': lin_mmd_test.two_moments(Y, Z, best_ker),
+            'compute_unbiased_linear_estimator': lin_mmd_test.compute_stat(test_data_two)
+        }
+
+        return test_results_one, test_results_two
+
+    def perform_quad_mmd_tests(self, start_point, end_point, shift, window):
+
+        X, Y, Z = self.get_data(start_point, end_point, shift, window)
+
+        # Initialize a dictionary to store the results
+        mmd_train_test_results = defaultdict(dict)
+
+        try:
+            tr_data = data.TSTData(X, Y)
+            test_data_one = data.TSTData(X, Z)
+            test_data_two = data.TSTData(Y, Z)
+
+            # training dictionary results
+            tr, te = tr_data.split_tr_te(tr_proportion=0.95, seed=10)  # is this necessary?!
+
+            xtr, ytr = tr.xy()
+            xytr = tr.stack_xy()
+            sig2 = util.meddistance(xytr, subsample=1000)
+            try:
+                k = kernel.KGauss(sig2)
+            except AssertionError:
+                print('setting sigma2 =1 as sigma2 > 0, must be > 0')
+                k = kernel.KGauss(1)
+            mean, var = tst.QuadMMDTest.h1_mean_var(xtr, ytr, k, is_var_computed=True)
+            Kx = k.eval(xtr, xtr)
+            Ky = k.eval(ytr, ytr)
+            Kxy = k.eval(xtr, ytr)
+            mean_gram, var_gram = tst.QuadMMDTest.h1_mean_var_gram(Kx, Ky, Kxy, k, True)
+            chi2_weights = chi_square_weights_H0(k, xytr)
+            sim_mmds = simulate_null_spectral(chi2_weights, n_simulate=2000)
+            # choose the best parameter and perform a test with permutations
+            med = util.meddistance(tr.stack_xy(), 1000)
+            list_gwidth = np.hstack(((med ** 2) * (2.0 ** np.linspace(-4, 4, 20))))
+            list_gwidth.sort()
+            try:
+                list_kernels = [kernel.KGauss(gw2) for gw2 in list_gwidth]
+                list_kernels_verbose = [kernel.KGauss(gw2).__str__() for gw2 in list_gwidth]
+                print('using these', list_kernels)
+            except AssertionError:
+                print('setting sigma2 =1 as sigma2 > 0, must be > 0')
+                list_kernels = [create_kgauss(gw2 ** 2, default_sigma2=1) for gw2 in list_gwidth]
+            # grid search to choose the best Gaussian width
+            besti, powers = tst.QuadMMDTest.grid_search_kernel(tr, list_kernels, alpha=0.05)
+            # perform test
+            best_ker = list_kernels[besti]
+            mmd_train_test_results[start_point]['perm_mmds1'] = tst.QuadMMDTest.permutation_list_mmd2(xtr, ytr, k,
+                                                                                                      n_permute=2000)
+
+            # Save the results in the mmd_train_test_results dictionary
+            mmd_train_test_results[start_point]['perm_mmds1'] = tst.QuadMMDTest.permutation_list_mmd2(xtr, ytr, k,
+                                                                                                      n_permute=2000)
+            mmd_train_test_results[start_point]['chi2_weights'] = chi2_weights
+            mmd_train_test_results[start_point]['sim_mmds'] = sim_mmds
+            mmd_train_test_results[start_point]['sig2'] = sig2
+            mmd_train_test_results[start_point]['Kxy'] = k.eval(xtr, ytr)
+            mmd_train_test_results[start_point]['mean'] = mean
+            mmd_train_test_results[start_point]['var'] = var
+            mmd_train_test_results[start_point]['Kxx'] = k.eval(xtr, xtr)
+            mmd_train_test_results[start_point]['Kyy'] = k.eval(ytr, ytr)
+            mmd_train_test_results[start_point]['mean_gram'] = mean_gram
+            mmd_train_test_results[start_point]['var_gram'] = var_gram
+            mmd_train_test_results[start_point]['med'] = util.meddistance(tr.stack_xy(), 1000)
+            mmd_train_test_results[start_point]['list_gwidth'] = list_gwidth.sort()
+            #mmd_train_test_results[start_point]['list_kernels'] = [kernel.KGauss(gw2).__str__() for gw2 in list_gwidth]
+            mmd_train_test_results[start_point]['besti'] = besti
+            mmd_train_test_results[start_point]['powers'] = powers
+            mmd_train_test_results[start_point]['best_ker'] = best_ker.__str__()
+
+            alpha = 0.05
+            mmd_test = tst.QuadMMDTest(best_ker, n_permute=2000, alpha=alpha)
+            mmd_train_test_results[start_point]['XZ_test'] = mmd_test.perform_test(test_data_one)
+            mmd_train_test_results[start_point]['YZ_test'] = mmd_test.perform_test(test_data_two)
+        except ValueError:
+            pass
+
+        return mmd_train_test_results
+
+    def analyze(self, start_point, end_point, shift, window):
+        X, Y, Z = self.get_data(start_point, end_point, shift, window)
+        return self.perform_tests(X, Y, Z)
+
+
+def analyze_column(mmd_tester, unpickled_df, start_point, end_point, shift, window):
+    try:
+        test_results_one, test_results_two = mmd_tester.analyze(start_point, end_point, shift, window)
+        col1, col2 = unpickled_df.columns[start_point], unpickled_df.columns[end_point + shift]
+        result_key = f"{col1} vs {col2}, window={window}, shift={shift}"
+        return {result_key: (test_results_one, test_results_two)}
+    except ValueError:
+        pass
+
+
 class QuadMMDAnalysis(MMDTester):
     def __init__(self, df, symbol, LinearMMDOutputFiles, bar_choice, variable):
         self.df = df
