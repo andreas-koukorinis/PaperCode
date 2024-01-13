@@ -339,8 +339,7 @@ def main_cross_correl(base_path: str, symbols_list: List[str], idx: int, bar_cho
         pass
 
 
-if __name__ == "__main__":
-    import time
+ 
 
     base_path = "/media/ak/Data1/ExperimentData/August11th2022Experiments/ExperimentInputFiles"
     # Define the path     to     the     data and the     list     of     symbols.

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import concurrent.futures
 
 # Constants
-reconLOBs = '/media/ak/Data1/InterestRateFuturesData/ReconstructedLOB'
+reconLOBs = '/media/ak/Data/InterestRateFuturesData/ReconstructedLOB'
 powerLawFiguresLocation = '/home/ak/Documents/Research/Papers/StylisedFactsPaper/figures/PowerLaw'
 powerLawResults = '/home/ak/Documents/Research/Papers/StylisedFactsPaper/PowerLawResults'
 directory = 'OrderBookImbalance'
@@ -170,13 +170,13 @@ def process_file(idx):
         'n': fit.n,
         'n_tail': fit.n_tail,
         'loglikelihood': fit.power_law.loglikelihood,
-        'fitted model':fit
     }
-
+    # Save the results of the power-law fit
     # Save the fitted model
     fitted_model_title = os.path.join(powerLawResults, f'powerLaw_{symbol}_fitted_model.pkl')
     with open(fitted_model_title, 'wb') as f:
         pickle.dump(results, f)
+        print(results)
 
     # Return the index and symbol for confirmation
     return idx, symbol
@@ -187,5 +187,6 @@ if __name__ == '__main__':
         futures = [executor.submit(process_file, idx) for idx in range(14)]  # Process indices 0 to 13
         for future in concurrent.futures.as_completed(futures):
             idx, symbol = future.result()
+            print(symbol)
             print(f"Completed processing for index {idx}, symbol {symbol}")
 
