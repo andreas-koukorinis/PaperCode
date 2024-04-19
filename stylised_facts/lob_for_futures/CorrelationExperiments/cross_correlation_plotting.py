@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 from scipy.spatial.distance import squareform
 
-
+import numpy as np
+plt.style.use(os.path.join('/home/ak/.config/matplotlib', 'latexstyle.mplstyle'))
 class DataLoader:
     def __init__(self, base_dir, symbol, bar):
         self.base_dir = base_dir
@@ -244,11 +245,12 @@ def plot_horizontal_boxplot_all_with_save(df, savefig=False, title=None, xticksi
 
     #     if title != "": # If a title is provided
     #         ax.set_title(title) # Set the title of the plot
+    figuresLocation = '/home/ak/Documents/Research/Papers/StylisedFactsPaper/figures'
 
     if savefig:  # If savefig is True
         if title == "":  # If no title is provided, set the title to "horizontal_boxplot"
             title = "horizontal_boxplot"
-        plt.savefig(title + ".png")  # Save the plot as a PNG image
+        plt.savefig(os.path.join(figuresLocation ,title + ".png"))  # Save the plot as a PNG image
 
     plt.show()  # Show the plot
 

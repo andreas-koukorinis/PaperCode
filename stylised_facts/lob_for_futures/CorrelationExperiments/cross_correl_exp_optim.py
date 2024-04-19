@@ -5,7 +5,7 @@ from collections import defaultdict
 from multiprocessing import Pool
 from typing import Dict, List
 from typing import Tuple
-
+import time
 import fathon
 import numpy as np
 import pandas as pd
@@ -38,6 +38,7 @@ class MicroVariableProcessor:
     (presumably related to financial markets),
     compute certain attributes from the data, and store these attributes in dictionaries for future usage.
     '''
+
     def __init__(self, base_path: str, symbol: str, bar: str):
         """
         Initialize the MicroVariableProcessor class.
@@ -337,9 +338,6 @@ def main_cross_correl(base_path: str, symbols_list: List[str], idx: int, bar_cho
             print("saved")
     except (ValueError, UnboundLocalError):
         pass
-
-
- 
 
     base_path = "/media/ak/Data1/ExperimentData/August11th2022Experiments/ExperimentInputFiles"
     # Define the path     to     the     data and the     list     of     symbols.
